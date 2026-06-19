@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 	"time"
@@ -20,7 +21,7 @@ func TestSQLiteAggregation(t *testing.T) {
 
 	hour := time.Now().UTC().Truncate(time.Hour).Format(time.RFC3339)
 	hits := []hit.Hit{
-		{Host: "test.dev", Path: "/blog", Referrer: "https://google.com", VisitorHash: "hash-a"},
+		{Host: "test.dev", Path: "/blog", Referrer: "https://google.com", VisitorHash: "hash-a", Browser: "Chrome", OS: "Linux", Channel: "organic"},
 		{Host: "test.dev", Path: "/blog", Referrer: "https://google.com", VisitorHash: "hash-b"},
 		{Host: "test.dev", Path: "/", VisitorHash: "hash-a"},
 	}
@@ -33,6 +34,16 @@ func TestSQLiteAggregation(t *testing.T) {
 		t.Fatalf("sqlOpen() = %v", err)
 	}
 	defer db.Close()
+
+	assertSQLiteAggCounts(t, db, hour)
+
+	if err := st.Ping(context.Background()); err != nil {
+		t.Fatalf("Ping() = %v", err)
+	}
+}
+
+func assertSQLiteAggCounts(t *testing.T, db *sql.DB, hour string) {
+	t.Helper()
 
 	var pathCount int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM kiko_paths WHERE host = 'test.dev'`).Scan(&pathCount); err != nil {
@@ -51,7 +62,7 @@ func TestSQLiteAggregation(t *testing.T) {
 	}
 
 	var blogTotal, blogUniques int
-	err = db.QueryRow(`
+	err := db.QueryRow(`
 		SELECT hc.total, hc.uniques
 		FROM kiko_hit_counts hc
 		JOIN kiko_paths p ON p.id = hc.path_id
@@ -59,11 +70,8 @@ func TestSQLiteAggregation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("query blog counts: %v", err)
 	}
-	if blogTotal != 2 {
-		t.Errorf("blog total = %d, want 2", blogTotal)
-	}
-	if blogUniques != 2 {
-		t.Errorf("blog uniques = %d, want 2", blogUniques)
+	if blogTotal != 2 || blogUniques != 2 {
+		t.Errorf("blog total/uniques = %d/%d, want 2/2", blogTotal, blogUniques)
 	}
 
 	var refTotal int
@@ -79,7 +87,8 @@ func TestSQLiteAggregation(t *testing.T) {
 		t.Errorf("ref total = %d, want 2", refTotal)
 	}
 
-	if err := st.Ping(context.Background()); err != nil {
-		t.Fatalf("Ping() = %v", err)
+	var browser string
+	if err := db.QueryRow(`SELECT browser FROM kiko_hits WHERE browser = 'Chrome' LIMIT 1`).Scan(&browser); err != nil {
+		t.Fatalf("query browser: %v", err)
 	}
 }

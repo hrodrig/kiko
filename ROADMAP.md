@@ -53,7 +53,7 @@ Writes to PostgreSQL, passes all audits.
 
 ---
 
-### 🟡 Phase 1: Core Engine (`v0.2.0`) — In progress
+### 🟡 Phase 1: Core Engine (`v0.2.0`) — Done
 
 **Goal:** kiko receives hits, buffers in memory, persists and aggregates to SQLite/PostgreSQL/MySQL.
 
@@ -67,9 +67,9 @@ Writes to PostgreSQL, passes all audits.
 - [x] Aggregation pipeline in `SaveHits()` — hourly upserts + unique dedup
 - [x] Per-IP rate limiting (`golang.org/x/time/rate`, pattern from gghstats)
 - [x] `kiko.js` — tracking script (~500B)
-- [ ] `internal/ua/` — minimal parser (browser name + OS, no regex)
-- [ ] `internal/ref/` — referrer parser + basic channel classifier
-- [ ] Tests: integration with PostgreSQL/MySQL
+- [x] `internal/ua/` — minimal parser (browser name + OS, no regex)
+- [x] `internal/ref/` — referrer parser + basic channel classifier
+- [x] Tests: integration with PostgreSQL/MySQL (skip unless `KIKO_TEST_*` env set)
 
 **Success criteria:** `make run` starts kiko, `curl -X POST localhost:8080/hit` returns GIF and hit appears in DB with hourly aggregates.
 

@@ -6,7 +6,7 @@
   <em>High-performance, cookie-free, batteries-included server-side analytics.</em>
 </p>
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/hrodrig/kiko/releases)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/hrodrig/kiko/releases)
 [![Release](https://img.shields.io/github/v/release/hrodrig/kiko)](https://github.com/hrodrig/kiko/releases)
 [![CI](https://github.com/hrodrig/kiko/actions/workflows/ci.yml/badge.svg)](https://github.com/hrodrig/kiko/actions)
 [![Security](https://github.com/hrodrig/kiko/actions/workflows/security.yml/badge.svg)](https://github.com/hrodrig/kiko/actions/workflows/security.yml)
@@ -47,6 +47,7 @@ Privacy-first web analytics **collector** in Go. A ~500-byte tracking script sen
 - [Install](#install)
 - [Tracking snippet](#tracking-snippet)
 - [API](#api)
+  - [Hit payload](#hit-payload)
 - [Quality gates](#quality-gates)
 - [Related](#related)
 - [Get involved](#get-involved)
@@ -259,6 +260,84 @@ The server embeds `kiko.js` (~500B). It sends `POST /hit` via `navigator.sendBea
 | `/api/v1/readyz` | GET | Readiness probe (DB + buffer) |
 
 Query API for **kui** is planned in Phase 2 — see [ROADMAP.md](ROADMAP.md).
+
+### Hit payload
+
+The browser sends **only** the fields below. kiko enriches each hit server-side (visitor hash, browser/OS, traffic channel) before buffering — those are **not** part of the client JSON.
+
+#### `POST /hit`
+
+**Headers**
+
+| Header | Required | Notes |
+|--------|----------|--------|
+| `Content-Type` | yes | `application/json` |
+| `User-Agent` | recommended | Used for bot filtering, daily visitor hash, and browser/OS labels |
+
+**JSON body**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `host` | string | yes | Site hostname (e.g. `gghstats.com`). Must match `allowed_hosts` when configured. |
+| `path` | string | no | Page path + query string. Default `/` if empty. |
+| `referrer` | string | no | Full referrer URL or empty for direct traffic. |
+| `title` | string | no | Document title (`document.title`). |
+| `width` | number | no | Screen width in pixels (`screen.width`). |
+
+**Example**
+
+```json
+{
+  "host": "gghstats.com",
+  "path": "/blog/my-post",
+  "referrer": "https://dev.to/someone",
+  "title": "My Post | GGHStats",
+  "width": 1920
+}
+```
+
+**Try it**
+
+```bash
+curl -sS -X POST 'http://127.0.0.1:8080/hit' \
+  -H 'Content-Type: application/json' \
+  -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0.0.0' \
+  -d '{"host":"localhost","path":"/demo","referrer":"https://google.com/search?q=kiko","title":"Demo","width":1920}' \
+  -o /dev/null -w '%{http_code} %{content_type}\n'
+```
+
+Expect `200 image/gif` (43-byte transparent GIF). Invalid or rejected hits return the **same** GIF so browsers cannot distinguish success from drop.
+
+#### `GET /hit.gif`
+
+Pixel fallback when `sendBeacon` is unavailable. Query params map to the same JSON fields:
+
+| Param | JSON field | Description |
+|-------|------------|-------------|
+| `h` | `host` | Site hostname |
+| `p` | `path` | Page path |
+| `r` | `referrer` | Referrer URL |
+| `t` | `title` | Document title |
+| `w` | `width` | Screen width (integer) |
+
+**Example**
+
+```http
+GET /hit.gif?h=gghstats.com&p=%2Fblog%2Fmy-post&r=https%3A%2F%2Fdev.to%2Fsomeone&t=My%20Post&w=1920
+```
+
+Same `User-Agent` and client IP rules as `POST /hit`.
+
+#### Server-side enrichment (not in client payload)
+
+| Stored field | Source |
+|--------------|--------|
+| `visitor_hash` | SHA-256 of client IP + `User-Agent` + daily salt (IP never written to disk) |
+| `browser`, `os` | Parsed from `User-Agent` ([`internal/ua/`](internal/ua/)) |
+| `channel` | Classified from referrer + host (`direct`, `organic`, `social`, `email`, `referral`) — [`internal/ref/`](internal/ref/) |
+| `referrer` (stored) | Normalized URL (query/fragment stripped) |
+
+Full API reference: [SPECIFICATIONS.md §4](SPECIFICATIONS.md#4-api).
 
 [↑ Back to top](#top)
 

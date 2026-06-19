@@ -123,6 +123,9 @@ CREATE TABLE kiko_hits (
     visitor_hash CHAR(64) NOT NULL,
     screen_width SMALLINT,
     title        TEXT,
+    browser      VARCHAR(64),
+    os           VARCHAR(64),
+    channel      VARCHAR(64),
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -188,11 +191,30 @@ Pattern inspired by [gghstats](https://github.com/hrodrig/gghstats) `ON CONFLICT
 ## 4. API
 
 ### `POST /hit`
+
 Main tracking endpoint.
 
-**Headers:** `Content-Type: application/json`
+**Headers**
 
-**Body:**
+| Header | Required | Notes |
+|--------|----------|--------|
+| `Content-Type` | yes | `application/json` |
+| `User-Agent` | recommended | Bot/prefetch filter, visitor hash, browser/OS parsing |
+
+Client IP is taken from `X-Forwarded-For` (first hop), then `X-Real-IP`, then `RemoteAddr`. Used only in memory for hashing — never stored.
+
+**JSON body**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `host` | string | yes | Site hostname; checked against `allowed_hosts` when set |
+| `path` | string | no | Defaults to `/` |
+| `referrer` | string | no | External or same-site referrer URL |
+| `title` | string | no | Page title |
+| `width` | number | no | Screen width (pixels) |
+
+**Example body**
+
 ```json
 {
   "host": "gghstats.com",
@@ -203,14 +225,49 @@ Main tracking endpoint.
 }
 ```
 
-**Response:** `200 OK` — `Content-Type: image/gif` — 43 bytes transparent GIF.
+**Example request**
+
+```bash
+curl -sS -X POST 'http://127.0.0.1:8080/hit' \
+  -H 'Content-Type: application/json' \
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X) Chrome/120.0.0.0 Safari/537.36' \
+  -d '{"host":"gghstats.com","path":"/blog/my-post","referrer":"https://dev.to/someone","title":"My Post","width":1920}'
+```
+
+**Response:** always `200 OK` — `Content-Type: image/gif` — 43-byte transparent GIF (including decode errors, bot drops, and rate limits).
+
+**Server enrichment** (not sent by the client; persisted on flush):
+
+| Column | Derivation |
+|--------|------------|
+| `visitor_hash` | SHA-256(IP + UA + daily salt) |
+| `browser`, `os` | `internal/ua` parser |
+| `channel` | `internal/ref` classifier on referrer + host |
+| `referrer` | Normalized URL stored after parsing |
 
 ### `GET /hit.gif`
-Fallback for browsers without sendBeacon.
 
-**Query params:** `p`, `r`, `t`, `w`, `h`
+Fallback for browsers without `sendBeacon`.
 
-**Response:** Same 43-byte GIF.
+**Query parameters** (same semantics as JSON fields):
+
+| Param | Field | Description |
+|-------|-------|-------------|
+| `h` | `host` | Site hostname |
+| `p` | `path` | Page path |
+| `r` | `referrer` | Referrer URL |
+| `t` | `title` | Document title |
+| `w` | `width` | Screen width (integer) |
+
+**Example**
+
+```http
+GET /hit.gif?h=gghstats.com&p=%2Fblog%2Fmy-post&r=https%3A%2F%2Fdev.to%2Fsomeone&t=My%20Post%20%7C%20GGHStats&w=1920 HTTP/1.1
+Host: analytics.example.com
+User-Agent: Mozilla/5.0 ...
+```
+
+**Response:** same 43-byte GIF as `POST /hit`.
 
 ### `GET /kiko.js`
 Serves the tracking script (immutable, cached 24h).

@@ -106,6 +106,7 @@ func (s *Server) trackHit(w http.ResponseWriter, r *http.Request) {
 	h.Normalize()
 	if s.accept(h, r) {
 		h.VisitorHash = s.visitor.Hash(clientIP(r), r.Header.Get("User-Agent"))
+		enrichHit(&h, r.Header.Get("User-Agent"))
 		s.buf.Append(h)
 		s.log.Debug("hit: %s %s (ref: %s)", h.Host, h.Path, h.Referrer)
 	}
@@ -123,6 +124,7 @@ func (s *Server) trackGIF(w http.ResponseWriter, r *http.Request) {
 	h.Normalize()
 	if s.accept(h, r) {
 		h.VisitorHash = s.visitor.Hash(clientIP(r), r.Header.Get("User-Agent"))
+		enrichHit(&h, r.Header.Get("User-Agent"))
 		s.buf.Append(h)
 		s.log.Debug("hit: %s %s (ref: %s)", h.Host, h.Path, h.Referrer)
 	}
