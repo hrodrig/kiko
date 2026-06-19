@@ -85,8 +85,11 @@ govulncheck: ## Check Go vulnerabilities
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
 grype: ## Directory CVE scan
-	@which grype >/dev/null 2>&1 || (echo "grype not installed, skipping"; exit 0)
-	grype --fail-on $(GRYPE_FAIL_ON) --exclude './dist/**,./$(BINARY)' .
+	@if command -v grype >/dev/null 2>&1; then \
+		grype --fail-on $(GRYPE_FAIL_ON) --exclude './dist/**,./$(BINARY)' .; \
+	else \
+		echo "grype not installed, skipping"; \
+	fi
 
 security: govulncheck gocyclo grype ## Run all security checks
 
