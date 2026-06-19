@@ -7,7 +7,9 @@
 
 ## Vision
 
-**kiko** is a privacy-first web analytics collector. No cookies, no Node, one static binary.
+**kiko** is a privacy-first web analytics **collector**. No cookies, no Node, one static binary.
+**kui** (*kiko* + *ui*) is the planned analytics UI — separate repo, not in scope here.
+
 Writes to PostgreSQL, passes all audits.
 
 ---
@@ -75,7 +77,7 @@ Writes to PostgreSQL, passes all audits.
 
 ### 🟡 Phase 2: Query API (`v0.3.0`) — 2-3 sprints
 
-**Goal:** kiko exposes REST API for aggregated stats. Dashboard is a separate repo.
+**Goal:** kiko exposes REST API for aggregated stats. **kui** (UI, separate repo) consumes that API.
 
 - [ ] `internal/analyzer/` — aggregation queries to PostgreSQL:
   - `GET /api/v1/stats/summary?host=&since=&until=` — hits, uniques, top path
@@ -135,7 +137,7 @@ Docker image on GHCR with grype 0 vulnerabilities.
 
 ### 🟣 Post-v1.0 (Future)
 
-- [ ] **Dashboard** — separate repo. Consumes kiko API. Design TBD (Go templates, SPA, whatever)
+- [ ] **[kui](https://github.com/hrodrig/kui)** — analytics UI (*kiko* + *ui*). Separate repo. Consumes kiko query API. Design TBD (Go templates, SPA, whatever)
 - [ ] SQLite backend (for deployments without PostgreSQL) — done in Phase 1 (default)
 - [ ] ClickHouse backend (for high throughput)
 - [ ] Real-time webhook (stream hits to external systems)

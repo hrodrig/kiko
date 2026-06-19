@@ -1,9 +1,9 @@
-# kiko — Privacy-first web analytics
+# kiko — Privacy-first web analytics collector in Go
 
 <a id="top"></a>
 
 <p align="center">
-  <strong>📊</strong> <em>Collect page views without cookies</em>
+  <em>High-performance, cookie-free, batteries-included server-side analytics.</em>
 </p>
 
 [![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/hrodrig/kiko/releases)
@@ -23,9 +23,11 @@
 
 > **Early development:** kiko is in initial active development. Expect breaking changes, incomplete features, and data loss between releases. **Do not use in production.**
 
-![kiko — privacy-first web analytics collector (no cookies, Go binary, ~500B tracking script)](assets/kiko-hero.png)
+![kiko — inbound raw data → buffered hits → sorted, aggregated & batch organized → SQLite / PostgreSQL / MySQL → kui (UI, future)](assets/kiko-hero-full.png)
 
-Privacy-first web analytics **collector** in Go. A ~500-byte tracking script sends page views; the server hashes visitors without cookies, buffers hits in memory, and flushes batch inserts plus hourly aggregations to **SQLite** (default), **PostgreSQL**, or **MySQL**. Dashboard is a separate repo.
+Privacy-first web analytics **collector** in Go. A ~500-byte tracking script sends inbound page views; the server hashes visitors without cookies, buffers hits in memory, and flushes sorted batch inserts plus hourly aggregations to **SQLite** (default), **PostgreSQL**, or **MySQL**.
+
+**This repo is kiko — collection only.** **[kui](https://github.com/hrodrig/kui)** (*kiko* + *ui*) is the analytics **user interface** in a separate repo: charts, tables, and reports over kiko's query API. kui is not built yet; the hero window on the right is where kui will sit.
 
 **Self-hosted deployment (Docker Compose, Helm, Kubernetes manifests):** **[kiko-selfhosted](https://github.com/hrodrig/kiko-selfhosted)** — production paths and example stacks live there; this repo ships the application binary, packages, and container image only (same split as [pgwd](https://github.com/hrodrig/pgwd) / [pgwd-selfhosted](https://github.com/hrodrig/pgwd-selfhosted)).
 
@@ -33,12 +35,13 @@ Privacy-first web analytics **collector** in Go. A ~500-byte tracking script sen
 
 **Documentation:** [SPECIFICATIONS.md](SPECIFICATIONS.md) (architecture, schema, API), [ROADMAP.md](ROADMAP.md) (phases), `configs/kiko.yml.sample`, and `man kiko` (when packaged).
 
-**Brand assets:** hero banner [`assets/kiko-hero.png`](assets/kiko-hero.png) (source SVG alongside); favicons under [`assets/favicons/`](assets/favicons/) (`favicon.svg` + PNG/ICO + `manifest.json` for the future dashboard). The collector API does not serve these yet.
+**Brand assets:** hero banner [`assets/kiko-hero-full.png`](assets/kiko-hero-full.png) (compact [`assets/kiko-hero.png`](assets/kiko-hero.png) + source [`assets/kiko-hero.svg`](assets/kiko-hero.svg)); favicons under [`assets/favicons/`](assets/favicons/) (`favicon.svg` + PNG/ICO + `manifest.json` for future **kui**). The collector API does not serve these yet.
 
 ## Table of contents
 
 - [Quick start](#quick-start)
 - [Why kiko](#why-kiko)
+- [Design principles](#design-principles)
 - [How it works](#how-it-works)
 - [Configuration](#configuration)
 - [Install](#install)
@@ -82,6 +85,7 @@ Probes for Kubernetes: `GET /api/v1/healthz` (liveness), `GET /api/v1/readyz` (r
 ## Why kiko
 
 - **No cookies** — SHA-256 visitor hash with daily salt. No GDPR banner needed.
+- **Batteries included** — ~500B tracking script, in-memory buffer, batch flush, migrations, and health probes in one static binary.
 - **No Node in production** — tracking script is ~500 bytes JS. Server is a static Go binary.
 - **Passes audits** — govulncheck, grype, gocyclo, cover. Same standard as sibling projects.
 - **Single binary** — Go, CGO disabled, distroless. ~2.5MB compiled.
@@ -91,7 +95,27 @@ Probes for Kubernetes: `GET /api/v1/healthz` (liveness), `GET /api/v1/readyz` (r
 
 ---
 
+## Design principles
+
+The hero diagram is the product thesis in one glance: a Go collector built to do **one job** — gather web analytics on infrastructure you control, without turning visitors into tracking targets.
+
+**Light and fast.** A ~500-byte tracking script feeds a compact Go binary tuned for throughput. Inbound hits are validated and hashed quickly; there is no heavyweight client SDK and no JavaScript runtime on the server — just a small static binary that chews through traffic like focused industrial gear.
+
+**Privacy by default.** The whole pipeline sits inside a cookie-free boundary. Visitors become ephemeral daily hashes, not persistent profiles; IP addresses stay in memory and never reach disk. Measurement without surveillance — analytics you own, not cross-site fingerprinting.
+
+**Buffer, then batch.** Hits accumulate in a visible in-memory buffer first. On a fixed interval they are sorted, aggregated, and flushed as organized batch inserts plus hourly rollups — the ordered blocks in the diagram. Hot path stays simple; database work stays predictable.
+
+**Your database, your choice.** One collector, three backends: **SQLite** (zero-config default), **PostgreSQL**, or **MySQL**. Same schema and flush logic — pick the engine that fits your stack without forking the application.
+
+That focus — fast ingestion, respectful privacy, smart batching, portable storage — is what kiko is for: a robust Go backend dedicated to collecting analytics **sovereignly and respectfully**. **kui** (*kiko* + *ui*) handles the UI in a separate project; kiko does not ship charts or admin screens.
+
+[↑ Back to top](#top)
+
+---
+
 ## How it works
+
+The hero diagram maps this pipeline end to end: inbound raw data from the browser, buffered hits in the Go collector, sorted and aggregated batch writes, then SQLite / PostgreSQL / MySQL — read by **kui** (the UI, separate repo, future).
 
 ```mermaid
 flowchart LR
@@ -113,7 +137,7 @@ flowchart LR
 
     JS --> IN
     INSERT --> DB[("SQLite / PostgreSQL / MySQL")]
-    DASH["Dashboard (separate repo)"] -.-> DB
+    DASH["kui (UI, separate repo)"] -.-> DB
 ```
 
 Each hit is validated, hashed, and appended to an in-memory buffer (mutex-protected; drops when full). Every 10s the buffer flushes to the database in batch: raw hits, normalized paths/referrers, and hourly counts. Rate limiting uses a per-IP token bucket (pattern from [gghstats](https://github.com/hrodrig/gghstats)).
@@ -234,7 +258,7 @@ The server embeds `kiko.js` (~500B). It sends `POST /hit` via `navigator.sendBea
 | `/api/v1/healthz` | GET | Liveness probe |
 | `/api/v1/readyz` | GET | Readiness probe (DB + buffer) |
 
-Query API for dashboards is planned in Phase 2 — see [ROADMAP.md](ROADMAP.md).
+Query API for **kui** is planned in Phase 2 — see [ROADMAP.md](ROADMAP.md).
 
 [↑ Back to top](#top)
 
@@ -263,6 +287,7 @@ Local check: `make release-check`
 | Project | Role |
 |---------|------|
 | [kiko-selfhosted](https://github.com/hrodrig/kiko-selfhosted) | Docker Compose, Helm, K8s manifests |
+| [kui](https://github.com/hrodrig/kui) | Analytics UI (*kiko* + *ui*) — charts and reports over kiko's API (planned) |
 | [gghstats](https://github.com/hrodrig/gghstats) | GitHub traffic stats |
 | [pgwd](https://github.com/hrodrig/pgwd) | PostgreSQL connection watchdog |
 | [kzero](https://github.com/hrodrig/kzero) | Kubernetes pipeline CLI |
