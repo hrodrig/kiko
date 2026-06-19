@@ -1,0 +1,52 @@
+# Deny-all by default
+*
+.*
+.git/
+
+# Allowlist: repository metadata and top-level project files
+!.gitignore
+!.goreleaser.yml
+!.goreleaser.yaml
+!.github/
+!.github/**
+!Dockerfile
+!Dockerfile.release
+!Makefile
+!README.md
+!VERSION
+!LICENSE
+!CHANGELOG.md
+!CONTRIBUTING.md
+!SECURITY.md
+!codecov.yml
+!go.mod
+!go.sum
+!SPECIFICATIONS.md
+!ROADMAP.md
+
+# Install script
+!scripts/
+!scripts/**
+
+# Allowlist: source trees
+!cmd/
+!cmd/**
+!internal/
+!internal/**
+!contrib/
+!contrib/**
+contrib/man/man1/*.gz
+
+# Platform tests
+!testing/
+!testing/**
+
+# Sample config
+!configs/
+!configs/**
+
+# Keep common generated/local artifacts ignored
+.DS_Store
+/kiko
+/kiko.exe
+coverage.out

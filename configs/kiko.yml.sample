@@ -1,0 +1,40 @@
+# kiko — configuration
+# See full docs: https://github.com/hrodrig/kiko
+
+# HTTP listen address
+listen: ":8080"
+
+# Public URL where kiko is reachable (used for tracking script URL generation)
+public_url: "https://analytics.tudominio.com"
+
+# Log level: debug, info, warn, error
+log_level: info
+
+# PostgreSQL connection
+database:
+  host: localhost
+  port: 5432
+  user: kiko
+  password: ""
+  dbname: kiko
+  sslmode: disable
+  # Alternatively, use a full DSN (overrides all fields above)
+  # dsn: "postgres://kiko:pass@localhost:5432/kiko?sslmode=disable"
+
+# In-memory hit buffer
+buffer:
+  # Seconds between batch flushes to PostgreSQL
+  flush_interval: 10
+  # Max hits in the channel buffer (drops oldest when full)
+  capacity: 4096
+
+# Rate limiting (per-IP token bucket)
+rate_limit:
+  requests_per_sec: 100
+  burst: 200
+
+# Only accept hits from these hosts (empty = accept all)
+allowed_hosts:
+  - gghstats.com
+  - kzero.dev
+  - hermesrodriguez.com

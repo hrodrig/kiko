@@ -1,0 +1,18 @@
+.TH KIKO 1 "2026-06-19" "kiko 0.1.0" "User Commands"
+.SH NAME
+kiko \- privacy-first web analytics collector
+.SH SYNOPSIS
+.B kiko
+[\fIcommand\fR] [\fIflags\fR]
+.SH DESCRIPTION
+Minimal, privacy-first web analytics collector. No cookies. One static binary.
+.SH COMMANDS
+.B serve
+Start the analytics HTTP server.
+.SH FLAGS
+\fB-c, --config\fR=file
+Path to config file (default: ./kiko.yml)
+.SH ENVIRONMENT
+\fBKIKO_LISTEN\fR, \fBKIKO_DATABASE_DSN\fR
+.SH SEE ALSO
+https://github.com/hrodrig/kiko

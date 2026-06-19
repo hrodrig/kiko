@@ -1,0 +1,137 @@
+version: 2
+
+project_name: kiko
+
+before:
+  hooks:
+    - go vet ./...
+
+builds:
+  - id: kiko
+    main: ./cmd/kiko
+    binary: kiko
+    ldflags:
+      - -s -w
+      - -X github.com/hrodrig/kiko/internal/version.Version={{ .Version }}
+      - -X github.com/hrodrig/kiko/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/hrodrig/kiko/internal/version.BuildDate={{ .Date }}
+      - -X github.com/hrodrig/kiko/internal/version.Branch={{ .Branch }}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+      - freebsd
+      - openbsd
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: default
+    formats: ["tar.gz"]
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+      - contrib/man/man1/kiko.1
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+
+nfpms:
+  - id: default
+    package_name: kiko
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    vendor: Hermes Rodríguez
+    homepage: https://github.com/hrodrig/kiko
+    maintainer: Hermes J. Rodríguez Azuaje <hejeroaz@gmail.com>
+    description: Privacy-first web analytics collector
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    contents:
+      - src: ./contrib/systemd/kiko.service
+        dst: /usr/lib/systemd/system/kiko.service
+      - src: ./contrib/deb/prerm.sh
+        dst: /usr/share/doc/kiko/prerm.sh
+      - src: ./contrib/deb/postrm.sh
+        dst: /usr/share/doc/kiko/postrm.sh
+      - src: ./contrib/man/man1/kiko.1
+        dst: /usr/share/man/man1/kiko.1
+
+dockers_v2:
+  - id: kiko
+    goos: linux
+    goarch: amd64
+    dockerfile: Dockerfile.release
+    image_templates:
+      - "ghcr.io/hrodrig/kiko:{{ .Version }}"
+      - "ghcr.io/hrodrig/kiko:latest"
+    build_flag_templates:
+      - "--label=org.opencontainers.image.title=kiko"
+      - "--label=org.opencontainers.image.description=Privacy-first web analytics collector"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+    use_buildx: true
+    disable: "{{ .IsSnapshot }}"
+  - id: kiko-arm64
+    goos: linux
+    goarch: arm64
+    dockerfile: Dockerfile.release
+    image_templates:
+      - "ghcr.io/hrodrig/kiko:{{ .Version }}-arm64"
+      - "ghcr.io/hrodrig/kiko:latest-arm64"
+    build_flag_templates:
+      - "--label=org.opencontainers.image.title=kiko"
+      - "--label=org.opencontainers.image.description=Privacy-first web analytics collector"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+    use_buildx: true
+    disable: "{{ .IsSnapshot }}"
+
+docker_manifests:
+  - id: kiko
+    name_template: "ghcr.io/hrodrig/kiko:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/hrodrig/kiko:{{ .Version }}"
+      - "ghcr.io/hrodrig/kiko:{{ .Version }}-arm64"
+  - id: kiko-latest
+    name_template: "ghcr.io/hrodrig/kiko:latest"
+    image_templates:
+      - "ghcr.io/hrodrig/kiko:latest"
+      - "ghcr.io/hrodrig/kiko:latest-arm64"
+
+homebrew_casks:
+  - name: kiko
+    tap:
+      owner: hrodrig
+      name: homebrew-kiko
+    description: Privacy-first web analytics collector
+    homepage: https://github.com/hrodrig/kiko
+    license: MIT
+    install: |
+      bin.install "kiko"
+      man1.install "contrib/man/man1/kiko.1"
+    post_install: |
+      system "xattr", "-dr", "com.apple.quarantine", "#{staged_path}/kiko"

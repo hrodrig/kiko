@@ -1,0 +1,7 @@
+Privacy-first web analytics collector.
+
+Kiko is a minimal, privacy-first web analytics collector written in Go.
+No cookies, no Node.js in production, one static binary.
+
+Track page views without GDPR consent banners. SHA-256 visitor hashing,
+PostgreSQL backend, batch insertion for zero-overhead on the hot path.

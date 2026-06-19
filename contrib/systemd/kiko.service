@@ -1,0 +1,13 @@
+[Unit]
+Description=Kiko analytics collector
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/kiko serve
+Restart=always
+User=nobody
+Group=nogroup
+
+[Install]
+WantedBy=multi-user.target
