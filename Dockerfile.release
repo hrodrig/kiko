@@ -1,11 +1,16 @@
 # syntax=docker/dockerfile:1
+# Runtime image for GoReleaser dockers_v2: binaries are built by GoReleaser and laid out as
+# linux/<arch>/<binary> in the build context (see https://goreleaser.com/customization/dockers_v2/).
+ARG TARGETPLATFORM
 FROM gcr.io/distroless/static-debian12:nonroot
-
-COPY kiko /usr/local/bin/kiko
-
+ARG TARGETPLATFORM
+WORKDIR /app
+LABEL org.opencontainers.image.title="kiko"
+LABEL org.opencontainers.image.description="Privacy-first web analytics collector"
+LABEL org.opencontainers.image.source="https://github.com/hrodrig/kiko"
+LABEL org.opencontainers.image.authors="https://github.com/hrodrig/kiko"
+COPY ${TARGETPLATFORM}/kiko /app/kiko
 USER nonroot:nonroot
-
 EXPOSE 8080
-
-ENTRYPOINT ["/usr/local/bin/kiko"]
+ENTRYPOINT ["/app/kiko"]
 CMD ["serve"]
