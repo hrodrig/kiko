@@ -243,7 +243,31 @@ curl -sS -X POST 'http://127.0.0.1:8080/hit' \
 | `visitor_hash` | SHA-256(IP + UA + daily salt) |
 | `browser`, `os` | `internal/ua` parser |
 | `channel` | `internal/ref` classifier on referrer + host |
+| `source` | Referrer display label (Google, Facebook, …) |
+| `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content` | Parsed from path query via `internal/utm`; UTM params removed from stored `path` |
 | `referrer` | Normalized URL stored after parsing |
+
+### Stats API (`GET /api/v1/stats/*`)
+
+Read-only JSON API for **kui** and automation. Implemented in `internal/analyzer/`; served when the store backend is SQLite, PostgreSQL, or MySQL.
+
+**Common query params:** `host` (required), `since`, `until`, `limit`, `interval` (timeline only).
+
+**Auth:** `api.key` / `KIKO_API_KEY` — header `X-API-Key` or `Authorization: Bearer`. Per-key rate limit via `api.rate_limit` (default 30 req/s).
+
+| Endpoint | Description |
+|----------|-------------|
+| `/api/v1/stats/summary` | Hits, uniques, top path |
+| `/api/v1/stats/paths` | Top paths with counts |
+| `/api/v1/stats/refs` | Top referrers (+ source label) |
+| `/api/v1/stats/timeline` | Time series by hour or day |
+| `/api/v1/stats/visitors` | Unique visitors in range |
+| `/api/v1/stats/channels` | Breakdown by channel |
+| `/api/v1/stats/browsers` | Breakdown by browser |
+| `/api/v1/stats/os` | Breakdown by OS |
+| `/api/v1/stats/utm` | Breakdown by `utm_source` |
+
+Responses include `Cache-Control: public, max-age=60`.
 
 ### `GET /hit.gif`
 

@@ -6,7 +6,7 @@
   <em>High-performance, cookie-free, batteries-included server-side analytics.</em>
 </p>
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/hrodrig/kiko/releases)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue)](https://github.com/hrodrig/kiko/releases)
 [![Release](https://img.shields.io/github/v/release/hrodrig/kiko)](https://github.com/hrodrig/kiko/releases)
 [![CI](https://github.com/hrodrig/kiko/actions/workflows/ci.yml/badge.svg)](https://github.com/hrodrig/kiko/actions)
 [![Security](https://github.com/hrodrig/kiko/actions/workflows/security.yml/badge.svg)](https://github.com/hrodrig/kiko/actions/workflows/security.yml)
@@ -258,8 +258,38 @@ The server embeds `kiko.js` (~500B). It sends `POST /hit` via `navigator.sendBea
 | `/hit.gif` | GET | Pixel fallback |
 | `/api/v1/healthz` | GET | Liveness probe |
 | `/api/v1/readyz` | GET | Readiness probe (DB + buffer) |
+| `/api/v1/stats/summary` | GET | Headline metrics (hits, uniques, top path) |
+| `/api/v1/stats/paths` | GET | Top paths |
+| `/api/v1/stats/refs` | GET | Top referrers |
+| `/api/v1/stats/timeline` | GET | Time series (`interval=hour\|day`) |
+| `/api/v1/stats/visitors` | GET | Unique visitors |
+| `/api/v1/stats/channels` | GET | Breakdown by channel |
+| `/api/v1/stats/browsers` | GET | Breakdown by browser |
+| `/api/v1/stats/os` | GET | Breakdown by OS |
+| `/api/v1/stats/utm` | GET | Breakdown by `utm_source` |
 
-Query API for **kui** is planned in Phase 2 — see [ROADMAP.md](ROADMAP.md).
+### Stats API (for **kui**)
+
+All stats endpoints accept:
+
+| Query | Required | Description |
+|-------|----------|-------------|
+| `host` | yes | Site hostname |
+| `since` | no | Start (`YYYY-MM-DD` or RFC3339). Default: 30 days before `until`. |
+| `until` | no | End (same formats). Default: now. |
+| `limit` | no | Max rows for list endpoints (default 10, max 100). |
+| `interval` | no | Timeline only: `hour` or `day` (default `day`). |
+
+**Auth:** set `api.key` / `KIKO_API_KEY`. Send `X-API-Key: <key>` or `Authorization: Bearer <key>`. Empty key = open (dev only; server logs a warning).
+
+**Example**
+
+```bash
+curl -sS 'http://127.0.0.1:8080/api/v1/stats/summary?host=gghstats.com&since=2026-01-01' \
+  -H 'X-API-Key: your-secret'
+```
+
+Responses are JSON with `Cache-Control: public, max-age=60`.
 
 ### Hit payload
 
@@ -335,6 +365,8 @@ Same `User-Agent` and client IP rules as `POST /hit`.
 | `visitor_hash` | SHA-256 of client IP + `User-Agent` + daily salt (IP never written to disk) |
 | `browser`, `os` | Parsed from `User-Agent` ([`internal/ua/`](internal/ua/)) |
 | `channel` | Classified from referrer + host (`direct`, `organic`, `social`, `email`, `referral`) — [`internal/ref/`](internal/ref/) |
+| `source` | Display label for referrer (Google, Twitter/X, …) |
+| `utm_*` | Parsed from path query (`utm_source`, …); stripped from stored path |
 | `referrer` (stored) | Normalized URL (query/fragment stripped) |
 
 Full API reference: [SPECIFICATIONS.md §4](SPECIFICATIONS.md#4-api).

@@ -171,6 +171,30 @@ func TestDatabaseDSNHelpers(t *testing.T) {
 	}
 }
 
+func TestLoadInvalidAPIRateLimit(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "kiko.yml")
+	content := []byte("api:\n  rate_limit:\n    enabled: true\n    requests_per_sec: 0\n")
+	if err := os.WriteFile(path, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected api rate limit error")
+	}
+}
+
+func TestLoadAPIKeyEnv(t *testing.T) {
+	t.Setenv("KIKO_API_KEY", "secret")
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.API.Key != "secret" {
+		t.Errorf("API.Key = %q", cfg.API.Key)
+	}
+}
+
 func TestNormalizedDriver(t *testing.T) {
 	tests := []struct {
 		in   string

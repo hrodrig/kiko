@@ -57,3 +57,12 @@ allowed_hosts:
 # Override via KIKO_VISITOR_SALT
 visitor:
   salt: ""
+
+# Stats API (Phase 2) — consumed by kui
+api:
+  # Set in production via KIKO_API_KEY (empty = open, dev only)
+  key: ""
+  rate_limit:
+    enabled: true
+    requests_per_sec: 30
+    burst: 60

@@ -14,4 +14,5 @@ func enrichHit(h *hit.Hit, userAgent string) {
 	ri := ref.Parse(h.Referrer, h.Host)
 	h.Referrer = ri.Referrer
 	h.Channel = string(ri.Channel)
+	h.Source = ri.Source
 }

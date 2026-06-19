@@ -1,6 +1,10 @@
 package hit
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/hrodrig/kiko/internal/utm"
+)
 
 type Hit struct {
 	Host        string `json:"host"`
@@ -12,12 +16,25 @@ type Hit struct {
 	Browser     string `json:"-"`
 	OS          string `json:"-"`
 	Channel     string `json:"-"`
+	Source      string `json:"-"`
+	UTMSource   string `json:"-"`
+	UTMMedium   string `json:"-"`
+	UTMCampaign string `json:"-"`
+	UTMTerm     string `json:"-"`
+	UTMContent  string `json:"-"`
 }
 
 func (h *Hit) Normalize() {
 	if h.Path == "" {
 		h.Path = "/"
 	}
+	clean, p := utm.FromPath(h.Path)
+	h.Path = clean
+	h.UTMSource = p.Source
+	h.UTMMedium = p.Medium
+	h.UTMCampaign = p.Campaign
+	h.UTMTerm = p.Term
+	h.UTMContent = p.Content
 }
 
 type Buffer interface {

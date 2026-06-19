@@ -21,6 +21,7 @@ const (
 type Info struct {
 	Referrer string
 	Channel  Channel
+	Source   string // display label, e.g. Google, Facebook
 }
 
 // Parse normalizes referrer for the given site host and classifies the channel.
@@ -46,7 +47,73 @@ func Parse(referrer, siteHost string) Info {
 	}
 
 	ch := classifyHost(refHost)
-	return Info{Referrer: cleanURL(u), Channel: ch}
+	return Info{Referrer: cleanURL(u), Channel: ch, Source: sourceLabel(refHost, ch)}
+}
+
+func sourceLabel(host string, ch Channel) string {
+	if ch == ChannelDirect {
+		return ""
+	}
+	if ch == ChannelOrganic {
+		return searchSourceName(host)
+	}
+	if ch == ChannelSocial {
+		return socialSourceName(host)
+	}
+	if ch == ChannelEmail {
+		return "Email"
+	}
+	return host
+}
+
+func searchSourceName(host string) string {
+	switch {
+	case strings.Contains(host, "google."):
+		return "Google"
+	case strings.Contains(host, "bing.com"):
+		return "Bing"
+	case strings.Contains(host, "duckduckgo.com"):
+		return "DuckDuckGo"
+	case strings.Contains(host, "yahoo.com"):
+		return "Yahoo"
+	case strings.Contains(host, "yandex."):
+		return "Yandex"
+	case strings.Contains(host, "baidu.com"):
+		return "Baidu"
+	case strings.Contains(host, "ecosia.org"):
+		return "Ecosia"
+	case strings.Contains(host, "kagi.com"):
+		return "Kagi"
+	default:
+		return host
+	}
+}
+
+func socialSourceName(host string) string {
+	switch {
+	case strings.Contains(host, "twitter.com"), host == "t.co", strings.Contains(host, "x.com"):
+		return "Twitter/X"
+	case strings.Contains(host, "facebook.com"), strings.Contains(host, "fb.com"):
+		return "Facebook"
+	case strings.Contains(host, "instagram.com"):
+		return "Instagram"
+	case strings.Contains(host, "linkedin.com"):
+		return "LinkedIn"
+	case strings.Contains(host, "reddit.com"):
+		return "Reddit"
+	case strings.Contains(host, "youtube.com"):
+		return "YouTube"
+	case strings.Contains(host, "tiktok.com"):
+		return "TikTok"
+	case strings.Contains(host, "mastodon."):
+		return "Mastodon"
+	case strings.Contains(host, "bsky.app"):
+		return "Bluesky"
+	case strings.Contains(host, "news.ycombinator.com"), strings.Contains(host, "hn.algolia.com"):
+		return "Hacker News"
+	default:
+		return host
+	}
 }
 
 func channelFromQuery(q url.Values) Channel {

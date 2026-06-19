@@ -124,7 +124,18 @@ func initRuntime(cfg *config.Config) (store.Store, hit.Buffer, http.Handler, fun
 		})
 	}
 
-	sv := server.New(st, buf, cfg.Log, cfg.AllowedHosts, vh, rl)
+	var apiRL *server.APIRateLimiter
+	if cfg.API.RateLimit.Enabled {
+		apiRL = server.NewAPIRateLimiter(cfg.API.RateLimit.RequestsPerSec, cfg.API.RateLimit.Burst)
+	}
+	if cfg.API.Key == "" {
+		cfg.Log.Warn("api.key not set — stats endpoints are open; set KIKO_API_KEY in production")
+	}
+
+	opts := []server.ServerOption{
+		server.WithStats(server.StatsConfig{APIKey: cfg.API.Key}, apiRL),
+	}
+	sv := server.New(st, buf, cfg.Log, cfg.AllowedHosts, vh, rl, opts...)
 	cleanup := func() {
 		cancel()
 		flushHits(st, buf, cfg.Log)

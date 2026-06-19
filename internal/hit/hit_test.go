@@ -22,11 +22,21 @@ func TestNormalize(t *testing.T) {
 		{Hit{Path: "/"}, "/"},
 		{Hit{Path: "/blog"}, "/blog"},
 		{Hit{Path: "/blog?page=2"}, "/blog?page=2"},
+		{Hit{Path: "/blog?utm_source=x&page=2"}, "/blog?page=2"},
 	}
 	for _, tt := range tests {
-		tt.in.Normalize()
-		if tt.in.Path != tt.want {
-			t.Errorf("Normalize({Path:%q}) = %q; want %q", tt.in.Path, tt.in.Path, tt.want)
+		h := tt.in
+		h.Normalize()
+		if h.Path != tt.want {
+			t.Errorf("Normalize({Path:%q}) = %q; want %q", tt.in.Path, h.Path, tt.want)
 		}
+	}
+}
+
+func TestNormalizeUTM(t *testing.T) {
+	h := Hit{Path: "/?utm_source=newsletter&utm_medium=email"}
+	h.Normalize()
+	if h.UTMSource != "newsletter" || h.UTMMedium != "email" {
+		t.Errorf("utm = %+v", h)
 	}
 }

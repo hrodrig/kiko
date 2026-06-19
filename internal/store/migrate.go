@@ -22,6 +22,27 @@ func migrate(db *sql.DB, driver string) error {
 	if err := migrateHitMeta(db, driver); err != nil {
 		return err
 	}
+	if err := migrateHitUTM(db, driver); err != nil {
+		return err
+	}
+	return nil
+}
+
+func migrateHitUTM(db *sql.DB, driver string) error {
+	cols := []string{"utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "source"}
+	for _, col := range cols {
+		stmt := hitMetaAlterSQL(driver, col)
+		if stmt == "" {
+			continue
+		}
+		if _, err := db.Exec(stmt); err != nil {
+			low := strings.ToLower(err.Error())
+			if strings.Contains(low, "duplicate column") || strings.Contains(low, "already exists") {
+				continue
+			}
+			return fmt.Errorf("migrate hit utm (%s): %w", col, err)
+		}
+	}
 	return nil
 }
 
@@ -78,6 +99,12 @@ func hitsTableSQL(driver string) []string {
 				browser VARCHAR(64),
 				os VARCHAR(64),
 				channel VARCHAR(64),
+				source VARCHAR(128),
+				utm_source VARCHAR(128),
+				utm_medium VARCHAR(128),
+				utm_campaign VARCHAR(128),
+				utm_term VARCHAR(128),
+				utm_content VARCHAR(128),
 				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 			)`,
 			`CREATE INDEX IF NOT EXISTS idx_kiko_hits_host_date ON kiko_hits (host, created_at DESC)`,
@@ -95,6 +122,12 @@ func hitsTableSQL(driver string) []string {
 				browser VARCHAR(64),
 				os VARCHAR(64),
 				channel VARCHAR(64),
+				source VARCHAR(128),
+				utm_source VARCHAR(128),
+				utm_medium VARCHAR(128),
+				utm_campaign VARCHAR(128),
+				utm_term VARCHAR(128),
+				utm_content VARCHAR(128),
 				created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
 			)`,
 		}
@@ -111,6 +144,12 @@ func hitsTableSQL(driver string) []string {
 				browser TEXT,
 				os TEXT,
 				channel TEXT,
+				source TEXT,
+				utm_source TEXT,
+				utm_medium TEXT,
+				utm_campaign TEXT,
+				utm_term TEXT,
+				utm_content TEXT,
 				created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 			)`,
 			`CREATE INDEX IF NOT EXISTS idx_kiko_hits_host_date ON kiko_hits (host, created_at)`,
