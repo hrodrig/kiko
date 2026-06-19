@@ -53,7 +53,6 @@ func New(s store.Store, buf hit.Buffer, l *log.Logger, allowedHosts []string, v 
 	sv.mux.HandleFunc("GET /hit.gif", sv.trackGIF)
 	sv.mux.HandleFunc("GET "+HealthzPath, sv.healthz)
 	sv.mux.HandleFunc("GET "+ReadyzPath, sv.readyz)
-	sv.mux.HandleFunc("GET /health", sv.readyz) // deprecated: use ReadyzPath
 	return sv
 }
 

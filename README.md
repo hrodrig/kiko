@@ -189,7 +189,6 @@ Set via `log_level` in config or `KIKO_LOG_LEVEL` env var.
 | `/hit.gif` | GET | Fallback pixel tracking |
 | `/api/v1/healthz` | GET | Liveness probe |
 | `/api/v1/readyz` | GET | Readiness probe (DB + buffer) |
-| `/health` | GET | Deprecated alias of `/api/v1/readyz` |
 
 ## Quality gates
 

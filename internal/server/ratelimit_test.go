@@ -56,7 +56,7 @@ func TestRateLimiterSkipsHealthAndScript(t *testing.T) {
 		t.Fatalf("expected /hit rate limited, got %d", rec.Code)
 	}
 
-	for _, path := range []string{HealthzPath, ReadyzPath, "/health", "/kiko.js"} {
+	for _, path := range []string{HealthzPath, ReadyzPath, "/kiko.js"} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		req.RemoteAddr = "10.0.0.1:12345"
 		rec := httptest.NewRecorder()

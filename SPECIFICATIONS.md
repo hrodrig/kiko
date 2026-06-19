@@ -183,9 +183,6 @@ Liveness probe — process up, no dependency checks.
 ### `GET /api/v1/readyz`
 Readiness probe — database ping + buffer stats.
 
-### `GET /health`
-Deprecated alias of `/api/v1/readyz`.
-
 ---
 
 ## 5. Tracking script (`kiko.js`)

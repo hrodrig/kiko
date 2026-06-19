@@ -15,7 +15,6 @@ func PublicMiddlewareSkip() MiddlewareSkip {
 		Exact: []string{
 			HealthzPath,
 			ReadyzPath,
-			"/health",
 			"/kiko.js",
 		},
 	}
