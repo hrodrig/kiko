@@ -1,5 +1,7 @@
 package hit
 
+import "sync"
+
 type Hit struct {
 	Host     string `json:"host"`
 	Path     string `json:"path"`
@@ -18,40 +20,52 @@ type Buffer interface {
 	Append(Hit)
 	Flush() []Hit
 	Len() int
+	Drops() uint64
 }
 
 type buffer struct {
-	hits []Hit
-	ch   chan Hit
+	mu    sync.Mutex
+	hits  []Hit
+	cap   int
+	drops uint64
 }
 
-func NewBuffer() Buffer {
-	b := &buffer{
-		hits: make([]Hit, 0, 1024),
-		ch:   make(chan Hit, 4096),
+func NewBuffer(capacity int) Buffer {
+	if capacity <= 0 {
+		capacity = 4096
 	}
-	go func() {
-		for h := range b.ch {
-			b.hits = append(b.hits, h)
-		}
-	}()
-	return b
+	return &buffer{
+		hits: make([]Hit, 0, min(capacity, 1024)),
+		cap:  capacity,
+	}
 }
 
 func (b *buffer) Append(h Hit) {
-	select {
-	case b.ch <- h:
-	default:
-		// drop if channel full
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if len(b.hits) >= b.cap {
+		b.drops++
+		return
 	}
+	b.hits = append(b.hits, h)
 }
 
 func (b *buffer) Flush() []Hit {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	out := b.hits
-	b.hits = make([]Hit, 0, 1024)
+	b.hits = make([]Hit, 0, min(b.cap, 1024))
 	return out
 }
 
 func (b *buffer) Len() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	return len(b.hits)
+}
+
+func (b *buffer) Drops() uint64 {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.drops
 }

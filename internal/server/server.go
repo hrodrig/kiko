@@ -15,6 +15,12 @@ import (
 	"github.com/hrodrig/kiko/internal/validate"
 )
 
+// HealthzPath is the Kubernetes liveness probe (process up; no dependency checks).
+const HealthzPath = "/api/v1/healthz"
+
+// ReadyzPath is the Kubernetes readiness probe (DB reachable, buffer healthy).
+const ReadyzPath = "/api/v1/readyz"
+
 //go:embed kiko.js
 var trackingJS string
 
@@ -40,7 +46,9 @@ func New(s store.Store, buf hit.Buffer, l *log.Logger, allowedHosts []string) *S
 	sv.mux.HandleFunc("GET /kiko.js", sv.serveJS)
 	sv.mux.HandleFunc("POST /hit", sv.trackHit)
 	sv.mux.HandleFunc("GET /hit.gif", sv.trackGIF)
-	sv.mux.HandleFunc("GET /health", sv.health)
+	sv.mux.HandleFunc("GET "+HealthzPath, sv.healthz)
+	sv.mux.HandleFunc("GET "+ReadyzPath, sv.readyz)
+	sv.mux.HandleFunc("GET /health", sv.readyz) // deprecated: use ReadyzPath
 	return sv
 }
 
@@ -109,9 +117,29 @@ func (s *Server) trackGIF(w http.ResponseWriter, r *http.Request) {
 	servePixel(w)
 }
 
-func (s *Server) health(w http.ResponseWriter, r *http.Request) {
+func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+func (s *Server) readyz(w http.ResponseWriter, r *http.Request) {
+	status := "ok"
+	code := http.StatusOK
+
+	if err := s.store.Ping(r.Context()); err != nil {
+		status = "degraded"
+		code = http.StatusServiceUnavailable
+		s.log.Warn("readyz: database ping failed: %v", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(map[string]any{
+		"status":       status,
+		"buffer_len":   s.buf.Len(),
+		"buffer_drops": s.buf.Drops(),
+	})
 }
 
 func servePixel(w http.ResponseWriter) {

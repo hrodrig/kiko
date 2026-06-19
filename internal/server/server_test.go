@@ -13,7 +13,7 @@ import (
 )
 
 func testServer(allowed []string) *Server {
-	buf := hit.NewBuffer()
+	buf := hit.NewBuffer(4096)
 	st := store.NewNop()
 	l := log.New(nil, log.Trace)
 	return New(st, buf, l, allowed)
@@ -21,6 +21,9 @@ func testServer(allowed []string) *Server {
 
 func TestServeJS(t *testing.T) {
 	s := testServer(nil)
+	if s.Handler() == nil {
+		t.Fatal("Handler() nil")
+	}
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/kiko.js", nil)
 	s.mux.ServeHTTP(w, r)
@@ -39,15 +42,18 @@ func TestServeJS(t *testing.T) {
 func TestHealth(t *testing.T) {
 	s := testServer(nil)
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", "/health", nil)
+	r := httptest.NewRequest("GET", ReadyzPath, nil)
 	s.mux.ServeHTTP(w, r)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d; want 200", w.Code)
 	}
-	var body map[string]string
+	var body map[string]any
 	json.NewDecoder(w.Body).Decode(&body)
 	if body["status"] != "ok" {
-		t.Errorf(`status = %q; want "ok"`, body["status"])
+		t.Errorf(`status = %v; want "ok"`, body["status"])
+	}
+	if _, ok := body["buffer_len"]; !ok {
+		t.Error("health missing buffer_len")
 	}
 }
 
@@ -155,6 +161,15 @@ func TestServePixel(t *testing.T) {
 	ct := w.Header().Get("Content-Type")
 	if !strings.HasPrefix(ct, "image/gif") {
 		t.Errorf("Content-Type = %q; want image/gif", ct)
+	}
+}
+
+func TestShorten(t *testing.T) {
+	if got := shorten("hello", 10); got != "hello" {
+		t.Errorf("shorten = %q", got)
+	}
+	if got := shorten("hello world this is long", 5); got != "hello..." {
+		t.Errorf("shorten = %q", got)
 	}
 }
 

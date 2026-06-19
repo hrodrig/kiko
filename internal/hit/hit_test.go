@@ -2,6 +2,17 @@ package hit
 
 import "testing"
 
+func TestNewBufferDefaultCapacity(t *testing.T) {
+	b := NewBuffer(0)
+	for i := 0; i < 4096; i++ {
+		b.Append(Hit{Host: "x", Path: "/"})
+	}
+	b.Append(Hit{Host: "x", Path: "/"})
+	if b.Drops() != 1 {
+		t.Errorf("Drops() = %d; want 1", b.Drops())
+	}
+}
+
 func TestNormalize(t *testing.T) {
 	tests := []struct {
 		in   Hit

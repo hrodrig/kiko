@@ -17,6 +17,12 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Buffer.FlushInterval != 10 {
 		t.Errorf("FlushInterval = %d; want 10", cfg.Buffer.FlushInterval)
 	}
+	if cfg.Database.Driver != "sqlite" {
+		t.Errorf("Database.Driver = %q; want sqlite", cfg.Database.Driver)
+	}
+	if cfg.Database.Path != "./data/kiko.db" {
+		t.Errorf("Database.Path = %q; want ./data/kiko.db", cfg.Database.Path)
+	}
 	if cfg.RateLimit.RequestsPerSec != 100 {
 		t.Errorf("RequestsPerSec = %d; want 100", cfg.RateLimit.RequestsPerSec)
 	}
@@ -73,5 +79,83 @@ func TestLoadInvalidLogLevel(t *testing.T) {
 	_, err := Load("")
 	if err == nil {
 		t.Fatal("expected error for bogus log level")
+	}
+}
+
+func TestLoadInvalidDriver(t *testing.T) {
+	t.Setenv("KIKO_DATABASE_DRIVER", "oracle")
+	_, err := Load("")
+	if err == nil {
+		t.Fatal("expected error for unsupported driver")
+	}
+}
+
+func TestLoadInvalidBufferCapacity(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "kiko.yml")
+	content := []byte("buffer:\n  capacity: 0\n")
+	if err := os.WriteFile(path, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for zero buffer capacity")
+	}
+}
+
+func TestLoadMySQLDefaultPort(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "kiko.yml")
+	content := []byte("database:\n  driver: mysql\n")
+	if err := os.WriteFile(path, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() = %v", err)
+	}
+	if cfg.Database.Port != 3306 {
+		t.Errorf("mysql port = %d; want 3306", cfg.Database.Port)
+	}
+}
+
+func TestDatabaseDSNHelpers(t *testing.T) {
+	cfg := DatabaseCfg{
+		User:     "u",
+		Password: "p",
+		Host:     "db.local",
+		Port:     5432,
+		DBName:   "kiko",
+		SSLMode:  "require",
+	}
+	if got := cfg.DSNString(); got == "" {
+		t.Fatal("DSNString empty")
+	}
+	cfg.DSN = "postgres://override"
+	if got := cfg.DSNString(); got != "postgres://override" {
+		t.Errorf("DSNString override = %q", got)
+	}
+	cfg.DSN = ""
+	cfg.Port = 3306
+	if got := cfg.MySQLDSN(); got == "" {
+		t.Fatal("MySQLDSN empty")
+	}
+}
+
+func TestNormalizedDriver(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{"", "sqlite"},
+		{"sqlite3", "sqlite"},
+		{"postgresql", "postgres"},
+		{"mysql", "mysql"},
+	}
+	for _, tt := range tests {
+		cfg := DatabaseCfg{Driver: tt.in}
+		if got := cfg.NormalizedDriver(); got != tt.want {
+			t.Errorf("NormalizedDriver(%q) = %q; want %q", tt.in, got, tt.want)
+		}
 	}
 }

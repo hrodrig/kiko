@@ -49,4 +49,5 @@ contrib/man/man1/*.gz
 .DS_Store
 /kiko
 /kiko.exe
+/data/
 coverage.out

@@ -9,6 +9,8 @@
 
 **Repo:** [github.com/hrodrig/kiko](https://github.com/hrodrig/kiko) · **Releases:** [Releases](https://github.com/hrodrig/kiko/releases)
 
+> **Early development:** kiko is in initial active development. Expect breaking changes, incomplete features, and data loss between releases. **Do not use in production.**
+
 Privacy-first web analytics collector. No cookies. No Node in production. One static binary.
 
 ```bash
@@ -115,12 +117,9 @@ log_level: info
 
 # PostgreSQL connection
 database:
-  host: localhost
-  port: 5432
-  user: kiko
-  password: ""
-  dbname: kiko
-  sslmode: disable
+  driver: sqlite
+  path: ./data/kiko.db
+  # postgres / mysql: set driver and host, port, user, password, dbname — or dsn
 
 # In-memory hit buffer
 buffer:
@@ -143,6 +142,8 @@ All fields overridable via env vars with `KIKO_` prefix:
 | `KIKO_LISTEN` | `listen` |
 | `KIKO_PUBLIC_URL` | `public_url` |
 | `KIKO_LOG_LEVEL` | `log_level` |
+| `KIKO_DATABASE_DRIVER` | `database.driver` |
+| `KIKO_DATABASE_PATH` | `database.path` |
 | `KIKO_DATABASE_HOST` | `database.host` |
 | `KIKO_DATABASE_PORT` | `database.port` |
 | `KIKO_DATABASE_USER` | `database.user` |
@@ -174,10 +175,12 @@ Set via `log_level` in config or `KIKO_LOG_LEVEL` env var.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/kiko.js` | GET | Script de tracking |
+| `/kiko.js` | GET | Tracking script |
 | `/hit` | POST | Tracking endpoint (JSON) |
 | `/hit.gif` | GET | Fallback pixel tracking |
-| `/health` | GET | Health check |
+| `/api/v1/healthz` | GET | Liveness probe |
+| `/api/v1/readyz` | GET | Readiness probe (DB + buffer) |
+| `/health` | GET | Deprecated alias of `/api/v1/readyz` |
 
 ## Quality gates
 
