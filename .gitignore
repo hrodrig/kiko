@@ -45,6 +45,10 @@ contrib/man/man1/*.gz
 !configs/
 !configs/**
 
+# Brand assets (hero, favicons)
+!assets/
+!assets/**
+
 # Keep common generated/local artifacts ignored
 .DS_Store
 /kiko
