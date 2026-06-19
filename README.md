@@ -30,14 +30,14 @@ make build
 
 ## Why kiko
 
-Google Analytics es overkill. Matomo es PHP. GoatCounter y Pirsch son geniales pero no los controlas al 100%.
+Google Analytics is overkill. Matomo requires PHP. GoatCounter and Pirsch are great but you don't control them 100%.
 
-kiko nace de la frustración con la sobreingeniería — un recolector que:
+kiko is born from frustration with over-engineered analytics — a collector that:
 
-- **No usa cookies** — visitor hash SHA-256 con salt diario. No necesita banner GDPR.
-- **Sin Node en producción** — el script de tracking son 500 bytes JS. El servidor es un binario Go.
-- **Pasa auditorías** — govulncheck, grype, gocyclo, cover. Mismo estándar que [gghstats](https://github.com/hrodrig/gghstats), [kzero](https://github.com/hrodrig/kzero), [groot](https://github.com/hrodrig/groot).
-- **Un solo binario** — Go, CGO disabled, distroless. 2.5MB compilado.
+- **No cookies** — SHA-256 visitor hash with daily salt. No GDPR banner needed.
+- **No Node in production** — tracking script is 500 bytes JS. Server is a static Go binary.
+- **Passes audits** — govulncheck, grype, gocyclo, cover. Same standard as [gghstats](https://github.com/hrodrig/gghstats), [kzero](https://github.com/hrodrig/kzero), [groot](https://github.com/hrodrig/groot).
+- **Single binary** — Go, CGO disabled, distroless. 2.5MB compiled.
 
 ## How it works
 
@@ -62,7 +62,7 @@ kiko nace de la frustración con la sobreingeniería — un recolector que:
 └─────────────────────────────┘
 ```
 
-Cada hit se bufferiza en memoria (channel buffered, non-blocking). Cada 10s se flush a PostgreSQL en batch. El dashboard será otro repo.
+Each hit is buffered in memory (buffered channel, non-blocking). Every 10s it flushes to PostgreSQL in batch. Dashboard is a separate repo.
 
 ## Install
 
@@ -110,7 +110,7 @@ kiko serve -c /etc/kiko/kiko.yml
 listen: ":8080"
 
 # Public URL for tracking script
-public_url: "https://analytics.tudominio.com"
+public_url: "https://analytics.yourdomain.com"
 
 # Log level: debug, info, warn, error
 log_level: info

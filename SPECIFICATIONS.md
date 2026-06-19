@@ -1,35 +1,36 @@
-# Kiko — Especificaciones Técnicas
+# Kiko — Technical Specifications
 
-> Recolector de analítica web minimalista, escrito en Go.
-> Privacidad primero. Sin cookies. Sin Node/NPM en producción. Sin bloat.
-
----
-
-## 1. Filosofía
-
-**kiko** nace de la frustración con la sobreingeniería de Google Analytics, Matomo, y similares.
-Sigue los mismos principios de gghstats, kzero, groot, vision:
-
-- **"Boring Hardware"** — herramientas predecibles, mantenibles, sin magia
-- **Un solo binario estático** — Go puro, CGO disabled, distroless
-- **Zero Node en producción** — sin runtime de JavaScript en los servidores
-- **Privacidad por diseño** — sin cookies, sin datos personales almacenados
-- **Pasa todas las auditorías** — govulncheck, grype, gocyclo, cover, go vet, gofmt
+> Minimal, privacy-first web analytics collector written in Go.
+> No cookies. No Node in production. No bloat.
 
 ---
 
-## 2. Arquitectura
+## 1. Philosophy
+
+**kiko** is born from frustration with over-engineered analytics — Google Analytics, Matomo, and the like.
+It follows the same principles as gghstats, kzero, groot, vision:
+
+- **"Boring Hardware"** — predictable, maintainable tools, no magic
+- **Single static binary** — pure Go, CGO disabled, distroless
+- **Zero Node in production** — no JavaScript runtime on servers
+- **Privacy by design** — no cookies, no personal data stored
+- **Passes all audits** — govulncheck, grype, gocyclo, cover, go vet, gofmt
+
+---
+
+## 2. Architecture
 
 ```
 ┌─────────────┐     POST /hit        ┌──────────────────────┐
 │  Astro/Web  │ ──────────────────►  │   kiko (Go binary)   │
 │  (script    │     GET /hit.gif     │                      │
-│   3.5KB)    │ ◄──── 43px GIF ──── │  ┌────────────────┐  │
+│   500B)     │ ◄──── 43px GIF ──── │  ┌────────────────┐  │
 └─────────────┘                      │  │  MemBuffer      │  │
-                                     │  │  ([]Hit, mutex) │  │
+                                     │  │  (chan Hit,     │  │
+                                     │  │   cap 4096)     │  │
                                      │  └───────┬────────┘  │
-                                     │          │ flush cada │
-                                     │          │ 10s        │
+                                     │          │ flush every│
+                                     │          │ 10s       │
                                      │          ▼            │
                                      │  ┌────────────────┐  │
                                      │  │  BatchInserter  │  │
@@ -46,50 +47,50 @@ Sigue los mismos principios de gghstats, kzero, groot, vision:
                                      └──────────────────────┘
 ```
 
-### 2.1 Componentes
+### 2.1 Components
 
-| Componente | Descripción | Lenguaje | Estado |
+| Component | Description | Language | Status |
 |-----------|-------------|----------|--------|
-| **kiko** | Backend recolector: recibe hits, buffer en memoria, batch insert a PostgreSQL | Go | MVP |
-| **kiko.js** | Script de tracking (~3.5KB) que envía hits vía sendBeacon o <img> | JS | MVP |
-| **dashboard** | Repositorio separado. Consume API de kiko. Go nativo, SPA, o lo que se decida luego | — | Futuro |
+| **kiko** | Collector backend: receives hits, in-memory buffer, batch insert to PostgreSQL | Go | MVP |
+| **kiko.js** | Tracking script (~500B) sending hits via sendBeacon or `<img>` fallback | JS | MVP |
+| **dashboard** | Separate repo. Consumes kiko API. Go native, SPA, TBD | — | Future |
 
-### 2.2 Flujo de un hit
+### 2.2 Hit flow
 
-1. Browser carga `kiko.js` → detecta `path`, `referrer`, `title`, `screen.width`
-2. Envía `POST /hit` con JSON body vía `navigator.sendBeacon()`, fallback a `GET /hit.gif?p=...`
-3. **kiko** recibe, calcula `visitor_hash = SHA-256(ip + ua + salt_diario)`, lo pone en buffer de memoria
-4. Cada 10s, batch flush: normaliza paths/referrers, upsertea stats
-5. Siempre responde con GIF transparente 43-byte (éxito o error — indistinguible)
+1. Browser loads `kiko.js` → detects `path`, `referrer`, `title`, `screen.width`
+2. Sends `POST /hit` with JSON body via `navigator.sendBeacon()`, fallback to `GET /hit.gif?p=...`
+3. **kiko** receives, calculates `visitor_hash = SHA-256(ip + ua + daily_salt)`, appends to memory buffer
+4. Every 10s, batch flush: normalizes paths/referrers, upserts stats
+5. Always responds with 43-byte transparent GIF (success or error — indistinguishable)
 
-### 2.3 Privacy por diseño
+### 2.3 Privacy by design
 
-- **Sin cookies** — tracking vía `visitor_hash` efímero
-- **Salt diario** — el hash cambia cada día, el visitante es "nuevo" al día siguiente
-- **IP solo en memoria** — nunca se persiste a disco, solo para el hash
-- **Sin datos personales** — no se almacena email, nombre, ni identificador persistente
-- **GDPR-ready** — no necesita banner de cookies, no almacena PII
+- **No cookies** — tracking via ephemeral `visitor_hash`
+- **Daily salt** — hash changes every day, visitor is "new" the next day
+- **IP in memory only** — never persisted to disk, only used for the hash
+- **No personal data** — no email, name, or persistent identifier stored
+- **GDPR-ready** — no cookie banner needed, no PII stored
 
 ---
 
-## 3. Esquema de Base de Datos (PostgreSQL)
+## 3. Database Schema (PostgreSQL)
 
 ```sql
--- Tabla de hits crudos (append-only)
+-- Raw hits table (append-only)
 CREATE TABLE kiko_hits (
-    id          BIGSERIAL PRIMARY KEY,
-    host        VARCHAR(255) NOT NULL,       -- gghstats.com, kzero.dev...
-    path        TEXT NOT NULL,               -- /blog, /docs/install...
-    referrer    TEXT,                        -- Fuente de tráfico
-    visitor_hash CHAR(64) NOT NULL,          -- SHA-256(ip+ua+salt)
-    screen_width SMALLINT,                   -- Para stats de resoluciones
-    title       TEXT,                        -- Page title del hit
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id           BIGSERIAL PRIMARY KEY,
+    host         VARCHAR(255) NOT NULL,       -- gghstats.com, kzero.dev...
+    path         TEXT NOT NULL,               -- /blog, /docs/install...
+    referrer     TEXT,                        -- Traffic source
+    visitor_hash CHAR(64) NOT NULL,           -- SHA-256(ip+ua+salt)
+    screen_width SMALLINT,                    -- Screen resolution stats
+    title        TEXT,                        -- Page title
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_kiko_hits_host_date ON kiko_hits (host, created_at DESC);
 
--- Tabla de paths normalizados
+-- Normalized paths
 CREATE TABLE kiko_paths (
     id      SERIAL PRIMARY KEY,
     host    VARCHAR(255) NOT NULL,
@@ -98,15 +99,15 @@ CREATE TABLE kiko_paths (
     UNIQUE(host, path)
 );
 
--- Tabla de referrers normalizados
+-- Normalized referrers
 CREATE TABLE kiko_refs (
-    id      SERIAL PRIMARY KEY,
-    host    VARCHAR(255) NOT NULL,
+    id       SERIAL PRIMARY KEY,
+    host     VARCHAR(255) NOT NULL,
     referrer TEXT NOT NULL,
     UNIQUE(host, referrer)
 );
 
--- Conteos agregados por hora (para dashboards rápidos)
+-- Hourly aggregated counts (for fast dashboards)
 CREATE TABLE kiko_hit_counts (
     host        VARCHAR(255) NOT NULL,
     path_id     INTEGER NOT NULL REFERENCES kiko_paths(id),
@@ -116,7 +117,7 @@ CREATE TABLE kiko_hit_counts (
     PRIMARY KEY (host, path_id, hour)
 );
 
--- Conteos por referrer por hora
+-- Hourly referrer counts
 CREATE TABLE kiko_ref_counts (
     host        VARCHAR(255) NOT NULL,
     ref_id      INTEGER NOT NULL REFERENCES kiko_refs(id),
@@ -126,14 +127,14 @@ CREATE TABLE kiko_ref_counts (
 );
 ```
 
-**Strategy de agregación:** Batch upsert con `ON CONFLICT DO UPDATE SET total = kiko_hit_counts.total + EXCLUDED.total`.
+**Aggregation strategy:** Batch upsert with `ON CONFLICT DO UPDATE SET total = kiko_hit_counts.total + EXCLUDED.total`.
 
 ---
 
 ## 4. API
 
 ### `POST /hit`
-Endpoint principal de tracking.
+Main tracking endpoint.
 
 **Headers:** `Content-Type: application/json`
 
@@ -141,21 +142,24 @@ Endpoint principal de tracking.
 ```json
 {
   "host": "gghstats.com",
-  "path": "/blog/mi-post",
-  "referrer": "https://dev.to/alguien",
-  "title": "Mi Post | GGHStats",
+  "path": "/blog/my-post",
+  "referrer": "https://dev.to/someone",
+  "title": "My Post | GGHStats",
   "width": 1920
 }
 ```
 
-**Response:** `200 OK` — `Content-Type: image/gif` — 43 bytes de GIF transparente.
+**Response:** `200 OK` — `Content-Type: image/gif` — 43 bytes transparent GIF.
 
 ### `GET /hit.gif`
-Fallback para navegadores sin sendBeacon.
+Fallback for browsers without sendBeacon.
 
-**Query params:** `p`, `r`, `t`, `w`
+**Query params:** `p`, `r`, `t`, `w`, `h`
 
-**Response:** Mismo GIF 43-byte.
+**Response:** Same 43-byte GIF.
+
+### `GET /kiko.js`
+Serves the tracking script (immutable, cached 24h).
 
 ### `GET /health`
 Health check.
@@ -164,60 +168,63 @@ Health check.
 
 ---
 
-## 5. Script de Tracking (`kiko.js`)
+## 5. Tracking script (`kiko.js`)
 
 ```javascript
-// ~3.5KB, sin dependencias externas
-(function() {
+// ~500B, zero dependencies
+(function(){
   var d = {
     host: location.hostname,
-    path: location.pathname,
+    path: location.pathname + location.search,
     referrer: document.referrer || '',
     title: document.title,
     width: screen.width
   };
-  var b = new Blob([JSON.stringify(d)], {type: 'application/json'});
-  navigator.sendBeacon && navigator.sendBeacon('/hit', b) ||
-    new Image().src = '/hit.gif?p=' + encodeURIComponent(d.path) +
+  var b = new Blob([JSON.stringify(d)], {type:'application/json'});
+  try {
+    if (!navigator.sendBeacon('/hit', b)) throw 0;
+  } catch(e) {
+    (new Image()).src = '/hit.gif?p=' + encodeURIComponent(d.path) +
       '&r=' + encodeURIComponent(d.referrer) +
       '&t=' + encodeURIComponent(d.title) +
-      '&w=' + d.width;
+      '&w=' + d.width +
+      '&h=' + encodeURIComponent(d.host);
+  }
 })();
 ```
 
 ---
 
-## 6. Stack Tecnológico
+## 6. Tech Stack
 
-| Capa | Tecnología | Razón |
-|------|-----------|-------|
-| Lenguaje | **Go 1.26+** | Binario estático, eco con el ecosistema |
-| CLI | **Cobra** | Estándar, mismo pattern que gghstats/kzero/groot |
-| Config | **Viper** | YAML + env vars, mismo pattern |
-| DB | **PostgreSQL** | vía `pgx` (driver puro Go, sin CGO) |
-| Buffer | **Memoria + RWMutex** | Sin dependencias externas para buffer |
-| HTTP | **net/http** estándar | Sin frameworks, chi/mux es overkill para 3 endpoints |
-| Templates | — | Dashboard será otro repo |
-| CI | **GitHub Actions** | Mismo pattern: ci.yml + security.yml + release.yml |
+| Layer | Technology | Reason |
+|-------|-----------|--------|
+| Language | **Go 1.26+** | Static binary, ecosystem alignment |
+| CLI | **Cobra** | Standard, same pattern as gghstats/kzero/groot |
+| Config | **Viper** | YAML + env vars, same pattern |
+| DB | **PostgreSQL** | via `pgx` (pure Go driver, no CGO) |
+| Buffer | **Memory + chan** | Zero external deps |
+| HTTP | **net/http** stdlib | 3 endpoints, chi is overkill |
+| CI | **GitHub Actions** | Same pattern: ci.yml + security.yml + release.yml |
 | Release | **GoReleaser** | v2, multi-OS/arch, Homebrew, dockers_v2 |
-| Contenedor | **distroless/static** | gcr.io base, nonroot user |
+| Container | **distroless/static** | gcr.io base, nonroot user |
 | SBOM | **syft + cosign** | SPDX + CycloneDX, keyless signing |
-| Homebrew | **hrodrig/homebrew-kiko** | Tap separado |
+| Homebrew | **hrodrig/homebrew-kiko** | Separate tap |
 
 ---
 
 ## 7. Quality Gates
 
-| Gate | Threshold | Dónde | Bloquea |
-|------|-----------|-------|---------|
-| `gofmt -s` | Sin diff | `make lint`, CI | ✅ |
+| Gate | Threshold | Where | Blocks |
+|------|-----------|-------|--------|
+| `gofmt -s` | No diff | `make lint`, CI | ✅ |
 | `go vet ./...` | 0 warnings | `make lint`, CI | ✅ |
-| `gocyclo -over 14` | ≤14 por función | `make lint`, CI | ✅ |
+| `gocyclo -over 14` | ≤14 per function | `make lint`, CI | ✅ |
 | `go test -race ./...` | All pass | `make test`, CI | ✅ |
 | `go test -coverprofile` | ≥80% | `make cover-check`, CI | ✅ |
 | `govulncheck ./...` | "No vulnerabilities" | `make security`, CI | ✅ |
 | `grype --fail-on high` | 0 high/critical | `make docker-scan`, CI | ✅ |
-| CodeQL | Sin security alerts | codeql.yml | ✅ |
+| CodeQL | No security alerts | codeql.yml | ✅ |
 | VERSION semver | `MAJOR.MINOR.PATCH` | release-check | ✅ |
 | Docker running | `docker info` | release-check, docker-* | ✅ |
 | HOMEBREW_TAP_TOKEN | set | release.yml | ✅ |
@@ -227,12 +234,12 @@ Health check.
 ## 8. Makefile Targets
 
 ```makefile
-build         # go build con ldflags (version, commit, date)
-install       # go install a $GOBIN
+build         # go build with ldflags (version, commit, date)
+install       # go install to $GOBIN
 test          # go test -race ./...
 cover         # test + coverage.out + report
 cover-check   # test + coverage gate ≥80%
-lint          # gofmt -s + go vet + gocyclo -over 14
+lint          # mapstructure pin + gofmt -s + go vet + gocyclo -over 14
 lint-fix      # gofmt -s -w
 security      # govulncheck + gocyclo + grype
 docker-build  # Docker build multi-stage
@@ -248,29 +255,29 @@ dist-openbsd  # cross-compile openbsd tarball
 
 ---
 
-## 9. Proyectos de Referencia
+## 9. Reference Projects
 
-### Inspiración directa
+### Direct inspiration
 
-| Proyecto | Qué tomar | Qué evitar |
-|----------|-----------|------------|
-| **GoatCounter** | Buffer en memoria + batch flush, GIF tracking pixel, sesiones sin cookies, upsert de stats | SQLite bottleneck, jQuery frontend, sin escalado horizontal |
-| **Pirsch** | Siphash fingerprint (UA+IP+salt+date), worker pipeline channel+batch, zero-allocation UA parser, channel classification local | ClickHouse-only (pesado), sin frontend open-source, denormalización excesiva |
+| Project | What to take | What to avoid |
+|---------|-------------|---------------|
+| **GoatCounter** | In-memory buffer + batch flush, GIF tracking pixel, cookie-less sessions, upsert stats | SQLite bottleneck, jQuery frontend, no horizontal scaling |
+| **Pirsch** | Siphash fingerprint (UA+IP+salt+date), worker pipeline channel+batch, zero-allocation UA parser, local channel classification | ClickHouse-only (heavy), no open-source frontend, excessive denormalization |
 
-### Proyectos propios (patrón a replicar)
+### Sibling projects (pattern to replicate)
 
-| Proyecto | Patrón clave |
-|----------|-------------|
-| **gghstats** | Makefile con quality gates, GoReleaser v2, distroless Docker, BSD ports sync, release-check gate |
-| **kzero** | gocyclo ≤14, coverage 80%, security metatarget, cross-compile 5 OS × 2 arch |
-| **groot** | Misma estructura: cmd/ + internal/, VERSION file, codecov.yml, man page en contrib/ |
+| Project | Key pattern |
+|---------|-------------|
+| **gghstats** | Makefile with quality gates, GoReleaser v2, distroless Docker, BSD ports sync, release-check gate |
+| **kzero** | gocyclo ≤14, coverage 80%, security meta-target, cross-compile 5 OS × 2 arch |
+| **groot** | Same structure: cmd/ + internal/, VERSION file, codecov.yml, man page in contrib/ |
 
 ---
 
-## 10. Plataformas Soportadas
+## 10. Supported Platforms
 
-| OS | Arch | Formato |
-|----|------|---------|
+| OS | Arch | Format |
+|----|------|--------|
 | Linux | amd64, arm64 | tar.gz, .deb, .rpm, Docker |
 | macOS | amd64, arm64 | tar.gz, Homebrew |
 | Windows | amd64, arm64 | zip |

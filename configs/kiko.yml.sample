@@ -4,8 +4,8 @@
 # HTTP listen address
 listen: ":8080"
 
-# Public URL where kiko is reachable (used for tracking script URL generation)
-public_url: "https://analytics.tudominio.com"
+# Public URL where kiko is reachable (used for tracking script URL)
+public_url: "https://analytics.yourdomain.com"
 
 # Log level: debug, info, warn, error
 log_level: info
@@ -19,7 +19,7 @@ database:
   dbname: kiko
   sslmode: disable
   # Alternatively, use a full DSN (overrides all fields above)
-  # dsn: "postgres://kiko:pass@localhost:5432/kiko?sslmode=disable"
+  # dsn: "postgres://kiko:***@localhost:5432/kiko?sslmode=disable"
 
 # In-memory hit buffer
 buffer:
@@ -34,6 +34,7 @@ rate_limit:
   burst: 200
 
 # Only accept hits from these hosts (empty = accept all)
+# Supports: hostnames, IPs, CIDR ranges
 allowed_hosts:
   - gghstats.com
   - kzero.dev
