@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-label="kiko privacy-first web analytics">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff7f2"/>
+      <stop offset="100%" stop-color="#ffe8dc"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <rect x="24" y="24" width="1152" height="372" fill="#ffffff" stroke="#121212" stroke-width="6"/>
+
+  <text x="72" y="98" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="56" font-weight="800" fill="#121212">kiko</text>
+  <text x="72" y="142" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="24" font-weight="600" fill="#444444">privacy-first web analytics - no cookies - one Go binary</text>
+
+  <rect x="72" y="190" width="220" height="150" fill="#fc8763" stroke="#121212" stroke-width="5"/>
+  <rect x="72" y="190" width="220" height="34" fill="#121212"/>
+  <circle cx="92" cy="207" r="6" fill="#fc8763"/>
+  <circle cx="112" cy="207" r="6" fill="#fc8763"/>
+  <circle cx="132" cy="207" r="6" fill="#fc8763"/>
+  <text x="92" y="260" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700" fill="#121212">kiko.js</text>
+  <text x="92" y="286" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#121212">~500 bytes</text>
+  <text x="92" y="312" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#121212">sendBeacon</text>
+
+  <path d="M320 265 H430" stroke="#121212" stroke-width="5" fill="none"/>
+  <path d="M420 250 L445 265 L420 280 Z" fill="#121212"/>
+
+  <rect x="470" y="190" width="260" height="150" fill="#ffffff" stroke="#121212" stroke-width="5"/>
+  <text x="490" y="228" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="800" fill="#121212">kiko (Go)</text>
+  <rect x="490" y="244" width="220" height="28" fill="#f3f3f3" stroke="#121212" stroke-width="3"/>
+  <text x="502" y="264" font-family="ui-monospace, monospace" font-size="13" fill="#121212">visitor_hash + buffer</text>
+  <rect x="490" y="284" width="220" height="28" fill="#f3f3f3" stroke="#121212" stroke-width="3"/>
+  <text x="502" y="304" font-family="ui-monospace, monospace" font-size="13" fill="#121212">flush - rate limit</text>
+
+  <path d="M750 265 H860" stroke="#121212" stroke-width="5" fill="none"/>
+  <path d="M850 250 L875 265 L850 280 Z" fill="#121212"/>
+
+  <ellipse cx="980" cy="220" rx="92" ry="24" fill="#fc8763" stroke="#121212" stroke-width="5"/>
+  <rect x="888" y="220" width="184" height="96" fill="#fc8763" stroke="#121212" stroke-width="5"/>
+  <ellipse cx="980" cy="316" rx="92" ry="24" fill="#fc8763" stroke="#121212" stroke-width="5"/>
+  <line x1="888" y1="220" x2="888" y2="316" stroke="#121212" stroke-width="5"/>
+  <line x1="1072" y1="220" x2="1072" y2="316" stroke="#121212" stroke-width="5"/>
+  <text x="928" y="278" font-family="ui-monospace, monospace" font-size="14" font-weight="700" fill="#121212">SQLite / PG / MySQL</text>
+
+  <rect x="900" y="56" width="276" height="54" fill="#121212"/>
+  <text x="924" y="92" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700" fill="#fc8763">no cookies - no PII stored</text>
+</svg>
