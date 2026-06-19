@@ -115,6 +115,10 @@ homebrew_casks:
     url:
       template: "https://github.com/hrodrig/kiko/releases/download/{{ .Tag }}/kiko_{{ .Tag }}_{{ .Os }}_{{ .Arch }}.tar.gz"
       verified: "github.com/hrodrig/kiko/"
-    install:
-      - bin.install "kiko"
-      - man1.install "contrib/man/man1/kiko.1"
+    commit_author:
+      name: Hermes Rodríguez
+      email: hrodrig@usb.ve
+    hooks:
+      post:
+        install: |
+          system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/kiko"]
