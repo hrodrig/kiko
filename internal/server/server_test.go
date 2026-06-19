@@ -10,17 +10,21 @@ import (
 	"github.com/hrodrig/kiko/internal/hit"
 	"github.com/hrodrig/kiko/internal/log"
 	"github.com/hrodrig/kiko/internal/store"
+	"github.com/hrodrig/kiko/internal/visitor"
 )
 
 func testServer(allowed []string) *Server {
-	buf := hit.NewBuffer()
+	buf := hit.NewBuffer(4096)
 	st := store.NewNop()
 	l := log.New(nil, log.Trace)
-	return New(st, buf, l, allowed)
+	return New(st, buf, l, allowed, visitor.NewHasher("test-salt"), nil)
 }
 
 func TestServeJS(t *testing.T) {
 	s := testServer(nil)
+	if s.Handler() == nil {
+		t.Fatal("Handler() nil")
+	}
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/kiko.js", nil)
 	s.mux.ServeHTTP(w, r)
@@ -39,15 +43,41 @@ func TestServeJS(t *testing.T) {
 func TestHealth(t *testing.T) {
 	s := testServer(nil)
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", "/health", nil)
+	r := httptest.NewRequest("GET", ReadyzPath, nil)
 	s.mux.ServeHTTP(w, r)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d; want 200", w.Code)
 	}
-	var body map[string]string
+	var body map[string]any
 	json.NewDecoder(w.Body).Decode(&body)
 	if body["status"] != "ok" {
-		t.Errorf(`status = %q; want "ok"`, body["status"])
+		t.Errorf(`status = %v; want "ok"`, body["status"])
+	}
+	if _, ok := body["buffer_len"]; !ok {
+		t.Error("health missing buffer_len")
+	}
+}
+
+func TestTrackHit_SetsVisitorHash(t *testing.T) {
+	buf := hit.NewBuffer(4096)
+	vh := visitor.NewHasher("test-salt")
+	s := New(store.NewNop(), buf, log.New(nil, log.Off), nil, vh, nil)
+
+	body := `{"host":"test.dev","path":"/blog"}`
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("POST", "/hit", strings.NewReader(body))
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("User-Agent", "Mozilla/5.0 Chrome/120")
+	r.RemoteAddr = "192.168.1.1:8080"
+	s.mux.ServeHTTP(w, r)
+
+	want := vh.Hash("192.168.1.1", "Mozilla/5.0 Chrome/120")
+	hits := buf.Flush()
+	if len(hits) != 1 {
+		t.Fatalf("buffer len = %d; want 1", len(hits))
+	}
+	if hits[0].VisitorHash != want {
+		t.Errorf("VisitorHash = %q; want %q", hits[0].VisitorHash, want)
 	}
 }
 
@@ -158,6 +188,46 @@ func TestServePixel(t *testing.T) {
 	}
 }
 
+func TestShorten(t *testing.T) {
+	if got := shorten("hello", 10); got != "hello" {
+		t.Errorf("shorten = %q", got)
+	}
+	if got := shorten("hello world this is long", 5); got != "hello..." {
+		t.Errorf("shorten = %q", got)
+	}
+}
+
+func TestQueryInt(t *testing.T) {
+	tests := []struct {
+		in   string
+		want int
+	}{
+		{"", 0},
+		{"1920", 1920},
+		{"12abc", 0},
+		{"0", 0},
+	}
+	for _, tt := range tests {
+		if got := queryInt(tt.in); got != tt.want {
+			t.Errorf("queryInt(%q) = %d, want %d", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestHandlerWrapsRateLimiter(t *testing.T) {
+	rl := NewRateLimiter(RateLimitConfig{RequestsPerSec: 1, Burst: 1})
+	defer rl.Shutdown()
+	s := New(store.NewNop(), hit.NewBuffer(16), log.New(nil, log.Off), nil, visitor.NewHasher("s"), rl)
+	h := s.Handler()
+
+	req := httptest.NewRequest(http.MethodGet, HealthzPath, nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("healthz via wrapped handler = %d", rec.Code)
+	}
+}
+
 func TestClientIP(t *testing.T) {
 	tests := []struct {
 		fwd  string
@@ -179,5 +249,12 @@ func TestClientIP(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("clientIP(fwd=%q, addr=%q) = %q; want %q", tt.fwd, tt.addr, got, tt.want)
 		}
+	}
+
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("X-Real-IP", "9.9.9.9")
+	r.RemoteAddr = "192.168.1.1:8080"
+	if got := clientIP(r); got != "9.9.9.9" {
+		t.Errorf("X-Real-IP clientIP = %q, want 9.9.9.9", got)
 	}
 }

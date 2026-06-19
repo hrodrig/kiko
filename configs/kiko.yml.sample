@@ -10,26 +10,39 @@ public_url: "https://analytics.yourdomain.com"
 # Log level: debug, info, warn, error
 log_level: info
 
-# PostgreSQL connection
+# Database (default: SQLite, zero-config)
 database:
-  host: localhost
-  port: 5432
-  user: kiko
-  password: ""
-  dbname: kiko
-  sslmode: disable
-  # Alternatively, use a full DSN (overrides all fields above)
+  driver: sqlite
+  path: ./data/kiko.db
+
+  # PostgreSQL example:
+  # driver: postgres
+  # host: localhost
+  # port: 5432
+  # user: kiko
+  # password: ""
+  # dbname: kiko
+  # sslmode: disable
   # dsn: "postgres://kiko:***@localhost:5432/kiko?sslmode=disable"
+
+  # MySQL example:
+  # driver: mysql
+  # host: localhost
+  # port: 3306
+  # user: kiko
+  # password: ""
+  # dbname: kiko
 
 # In-memory hit buffer
 buffer:
-  # Seconds between batch flushes to PostgreSQL
+  # Seconds between batch flushes to the database
   flush_interval: 10
-  # Max hits in the channel buffer (drops oldest when full)
+  # Max hits buffered in memory before drop (flushed periodically)
   capacity: 4096
 
 # Rate limiting (per-IP token bucket)
 rate_limit:
+  enabled: true
   requests_per_sec: 100
   burst: 200
 
@@ -39,3 +52,8 @@ allowed_hosts:
   - gghstats.com
   - kzero.dev
   - hermesrodriguez.com
+
+# Daily visitor fingerprint salt (required in production)
+# Override via KIKO_VISITOR_SALT
+visitor:
+  salt: ""

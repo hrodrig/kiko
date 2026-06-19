@@ -51,31 +51,25 @@ Writes to PostgreSQL, passes all audits.
 
 ---
 
-### 🟡 Phase 1: Core Engine (`v0.2.0`) — 2-3 sprints
+### 🟡 Phase 1: Core Engine (`v0.2.0`) — In progress
 
-**Goal:** kiko receives hits, buffers in memory, persists to PostgreSQL.
+**Goal:** kiko receives hits, buffers in memory, persists and aggregates to SQLite/PostgreSQL/MySQL.
 
-- [ ] `internal/hit/` — `Hit` type, `VisitorHash`
-- [ ] `internal/buffer/` — `MemBuffer` with channel, flush every 10s
-- [ ] `internal/store/` — `Store` interface + PostgreSQL implementation via `pgx`
-- [ ] `internal/server/` — HTTP handlers:
-  - `POST /hit` — JSON tracking endpoint
-  - `GET /hit.gif` — pixel fallback
-  - `GET /kiko.js` — tracking script
-  - `GET /health` — health check
-- [ ] `internal/log/` — leveled logger (Microsoft LogLevel semantics)
-- [ ] `internal/validate/` — host allowlist, bot detection, prefetch filtering
-- [ ] `internal/visitor/` — `generateVisitorHash(ip, ua) string` with `crypto/sha256`
+- [x] `internal/hit/` — `Hit` type, `VisitorHash`, mutex buffer
+- [x] `internal/store/` — `Store` interface + SQLite/PostgreSQL/MySQL via `Open()`
+- [x] `internal/server/` — HTTP handlers + healthz/readyz
+- [x] `internal/log/` — leveled logger
+- [x] `internal/validate/` — host allowlist, bot detection, prefetch filtering
+- [x] `internal/visitor/` — daily SHA-256 visitor hash
+- [x] SQL migration: `kiko_hits`, `kiko_paths`, `kiko_refs`, `kiko_hit_counts`, `kiko_ref_counts`
+- [x] Aggregation pipeline in `SaveHits()` — hourly upserts + unique dedup
+- [x] Per-IP rate limiting (`golang.org/x/time/rate`, pattern from gghstats)
+- [x] `kiko.js` — tracking script (~500B)
 - [ ] `internal/ua/` — minimal parser (browser name + OS, no regex)
 - [ ] `internal/ref/` — referrer parser + basic channel classifier
-- [ ] SQL migration: `CREATE TABLE kiko_hits`, `kiko_paths`, `kiko_refs`
-- [ ] `internal/stats/` — aggregation pipeline:
-  - `updateHitCounts()` — hourly upsert
-  - `updateRefCounts()` — hourly upsert
-- [ ] `kiko.js` — tracking script (~500B, vanilla JS)
-- [ ] Tests: unit + integration with PostgreSQL
+- [ ] Tests: integration with PostgreSQL/MySQL
 
-**Success criteria:** `make run` starts kiko, `curl -X POST localhost:8080/hit` returns GIF and hit appears in PostgreSQL.
+**Success criteria:** `make run` starts kiko, `curl -X POST localhost:8080/hit` returns GIF and hit appears in DB with hourly aggregates.
 
 ---
 
@@ -101,7 +95,7 @@ Writes to PostgreSQL, passes all audits.
 
 **Goal:** Ready for production in MicroK8s.
 
-- [ ] Multi-level rate limiting (by IP, by host)
+- [ ] Multi-level rate limiting (by IP, by host) — per-IP done in Phase 1
 - [ ] Bot filtering: prefetch headers, known bots, UA validation
 - [ ] IP ignore list (configurable, exclude own IPs)
 - [ ] `configs/kiko.yml.sample` — documented config
@@ -142,7 +136,7 @@ Docker image on GHCR with grype 0 vulnerabilities.
 ### 🟣 Post-v1.0 (Future)
 
 - [ ] **Dashboard** — separate repo. Consumes kiko API. Design TBD (Go templates, SPA, whatever)
-- [ ] SQLite backend (for deployments without PostgreSQL)
+- [ ] SQLite backend (for deployments without PostgreSQL) — done in Phase 1 (default)
 - [ ] ClickHouse backend (for high throughput)
 - [ ] Real-time webhook (stream hits to external systems)
 - [ ] Multi-tenant (single kiko for N sites)

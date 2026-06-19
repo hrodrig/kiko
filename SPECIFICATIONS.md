@@ -20,38 +20,34 @@ It follows the same principles as gghstats, kzero, groot, vision:
 
 ## 2. Architecture
 
-```
-┌─────────────┐     POST /hit        ┌──────────────────────┐
-│  Astro/Web  │ ──────────────────►  │   kiko (Go binary)   │
-│  (script    │     GET /hit.gif     │                      │
-│   500B)     │ ◄──── 43px GIF ──── │  ┌────────────────┐  │
-└─────────────┘                      │  │  MemBuffer      │  │
-                                     │  │  (chan Hit,     │  │
-                                     │  │   cap 4096)     │  │
-                                     │  └───────┬────────┘  │
-                                     │          │ flush every│
-                                     │          │ 10s       │
-                                     │          ▼            │
-                                     │  ┌────────────────┐  │
-                                     │  │  BatchInserter  │  │
-                                     │  └───────┬────────┘  │
-                                     └──────────┼───────────┘
-                                                │
-                                                ▼
-                                     ┌──────────────────────┐
-                                     │    PostgreSQL         │
-                                     │                      │
-                                     │  hits table          │
-                                     │  hit_counts (upsert) │
-                                     │  ref_counts (upsert) │
-                                     └──────────────────────┘
+```mermaid
+flowchart LR
+    subgraph browser["Browser"]
+        JS["kiko.js (~500B)"]
+    end
+
+    subgraph kiko["kiko (Go binary)"]
+        direction TB
+        IN["POST /hit · GET /hit.gif"]
+        RL["rate limit (per IP)"]
+        HASH["visitor_hash<br/>SHA-256(ip + ua + daily salt)"]
+        BUF["MemBuffer<br/>(mutex, cap 4k)"]
+        FLUSH["flush loop<br/>every 10s"]
+        INSERT["BatchInserter + aggregations"]
+
+        IN --> RL --> HASH --> BUF --> FLUSH --> INSERT
+    end
+
+    JS --> IN
+    INSERT --> DB[("SQLite / PostgreSQL / MySQL")]
+    DASH["Dashboard (separate repo)"] -.-> DB
 ```
 
 ### 2.1 Components
 
 | Component | Description | Language | Status |
 |-----------|-------------|----------|--------|
-| **kiko** | Collector backend: receives hits, in-memory buffer, batch insert to PostgreSQL | Go | MVP |
+| **kiko** | Collector backend: receives hits, in-memory buffer, batch insert + hourly aggregations | Go | MVP |
 | **kiko.js** | Tracking script (~500B) sending hits via sendBeacon or `<img>` fallback | JS | MVP |
 | **dashboard** | Separate repo. Consumes kiko API. Go native, SPA, TBD | — | Future |
 
@@ -60,8 +56,10 @@ It follows the same principles as gghstats, kzero, groot, vision:
 1. Browser loads `kiko.js` → detects `path`, `referrer`, `title`, `screen.width`
 2. Sends `POST /hit` with JSON body via `navigator.sendBeacon()`, fallback to `GET /hit.gif?p=...`
 3. **kiko** receives, calculates `visitor_hash = SHA-256(ip + ua + daily_salt)`, appends to memory buffer
-4. Every 10s, batch flush: normalizes paths/referrers, upserts stats
+4. Every 10s, batch flush: insert raw hits, normalize paths/referrers, upsert hourly stats
 5. Always responds with 43-byte transparent GIF (success or error — indistinguishable)
+
+Rate limiting (per-IP token bucket, `golang.org/x/time/rate`) protects tracking endpoints. Health probes and `/kiko.js` are exempt.
 
 ### 2.3 Privacy by design
 
@@ -73,18 +71,20 @@ It follows the same principles as gghstats, kzero, groot, vision:
 
 ---
 
-## 3. Database Schema (PostgreSQL)
+## 3. Database Schema
+
+Default backend is **SQLite** (`./data/kiko.db`). PostgreSQL and MySQL use the same logical schema with driver-specific types.
 
 ```sql
 -- Raw hits table (append-only)
 CREATE TABLE kiko_hits (
     id           BIGSERIAL PRIMARY KEY,
-    host         VARCHAR(255) NOT NULL,       -- gghstats.com, kzero.dev...
-    path         TEXT NOT NULL,               -- /blog, /docs/install...
-    referrer     TEXT,                        -- Traffic source
-    visitor_hash CHAR(64) NOT NULL,           -- SHA-256(ip+ua+salt)
-    screen_width SMALLINT,                    -- Screen resolution stats
-    title        TEXT,                        -- Page title
+    host         VARCHAR(255) NOT NULL,
+    path         TEXT NOT NULL,
+    referrer     TEXT,
+    visitor_hash CHAR(64) NOT NULL,
+    screen_width SMALLINT,
+    title        TEXT,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -125,9 +125,25 @@ CREATE TABLE kiko_ref_counts (
     total       INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (host, ref_id, hour)
 );
+
+-- Dedup table for incremental uniques (not exposed via API)
+CREATE TABLE kiko_hit_uniques (
+    host         VARCHAR(255) NOT NULL,
+    path_id      INTEGER NOT NULL REFERENCES kiko_paths(id),
+    hour         TIMESTAMPTZ NOT NULL,
+    visitor_hash CHAR(64) NOT NULL,
+    PRIMARY KEY (host, path_id, hour, visitor_hash)
+);
 ```
 
-**Aggregation strategy:** Batch upsert with `ON CONFLICT DO UPDATE SET total = kiko_hit_counts.total + EXCLUDED.total`.
+**Aggregation strategy:** Within each flush transaction:
+
+1. `INSERT` raw hits into `kiko_hits`
+2. Upsert `kiko_paths` / `kiko_refs` (normalize)
+3. `INSERT ... ON CONFLICT DO UPDATE SET total = total + N` on `kiko_hit_counts` / `kiko_ref_counts`
+4. Insert new `(host, path_id, hour, visitor_hash)` into `kiko_hit_uniques`; increment `uniques` only on first sighting
+
+Pattern inspired by [gghstats](https://github.com/hrodrig/gghstats) `ON CONFLICT` upserts (incremental totals, not GitHub-style `MAX`).
 
 ---
 
@@ -161,10 +177,14 @@ Fallback for browsers without sendBeacon.
 ### `GET /kiko.js`
 Serves the tracking script (immutable, cached 24h).
 
-### `GET /health`
-Health check.
+### `GET /api/v1/healthz`
+Liveness probe — process up, no dependency checks.
 
-**Response:** `{"status": "ok", "version": "0.1.0", "uptime": 12345}`
+### `GET /api/v1/readyz`
+Readiness probe — database ping + buffer stats.
+
+### `GET /health`
+Deprecated alias of `/api/v1/readyz`.
 
 ---
 
@@ -202,8 +222,9 @@ Health check.
 | Language | **Go 1.26+** | Static binary, ecosystem alignment |
 | CLI | **Cobra** | Standard, same pattern as gghstats/kzero/groot |
 | Config | **Viper** | YAML + env vars, same pattern |
-| DB | **PostgreSQL** | via `pgx` (pure Go driver, no CGO) |
-| Buffer | **Memory + chan** | Zero external deps |
+| DB | **SQLite** (default), **PostgreSQL**, **MySQL** | via `modernc.org/sqlite`, `pgx`, `go-sql-driver/mysql` |
+| Buffer | **Memory + mutex** | In-process slice, configurable capacity |
+| Rate limit | **golang.org/x/time/rate** | Per-IP token bucket (pattern from gghstats) |
 | HTTP | **net/http** stdlib | 3 endpoints, chi is overkill |
 | CI | **GitHub Actions** | Same pattern: ci.yml + security.yml + release.yml |
 | Release | **GoReleaser** | v2, multi-OS/arch, Homebrew, dockers_v2 |
