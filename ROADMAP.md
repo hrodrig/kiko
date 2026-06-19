@@ -75,11 +75,11 @@ Writes to PostgreSQL, passes all audits.
 
 ---
 
-### 🟡 Phase 2: Query API (`v0.3.0`) — 2-3 sprints
+### ✅ Phase 2: Query API (`v0.3.0`) — Done
 
 **Goal:** kiko exposes REST API for aggregated stats. **kui** (UI, separate repo) consumes that API.
 
-- [ ] `internal/analyzer/` — aggregation queries to PostgreSQL:
+- [x] `internal/analyzer/` — aggregation queries to PostgreSQL:
   - `GET /api/v1/stats/summary?host=&since=&until=` — hits, uniques, top path
   - `GET /api/v1/stats/paths?host=&since=&until=&limit=` — top paths with counts
   - `GET /api/v1/stats/refs?host=&since=&until=&limit=` — top referrers
@@ -88,16 +88,17 @@ Writes to PostgreSQL, passes all audits.
   - `GET /api/v1/stats/channels?host=&since=&until=` — breakdown by channel (direct, organic, social, …)
   - `GET /api/v1/stats/browsers?host=&since=&until=&limit=` — breakdown by browser
   - `GET /api/v1/stats/os?host=&since=&until=&limit=` — breakdown by OS
-- [ ] JSON output with cache headers (CDN-friendly)
-- [ ] Rate limiting by API key
-- [ ] Tests: unit + integration with PostgreSQL
+  - `GET /api/v1/stats/utm?host=&since=&until=&limit=` — breakdown by utm_source
+- [x] JSON output with cache headers (CDN-friendly)
+- [x] Rate limiting by API key
+- [x] Tests: unit + integration with SQLite (Postgres/MySQL via existing `KIKO_TEST_*` hooks)
 
 **Ingest enrichment (Plausible-inspired, collector side):**
 
-- [ ] **UTM capture** — parse `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content` from hit path/query; persist on `kiko_hits`; expose in stats API breakdowns
-- [ ] **Referrer source labels** — extend `internal/ref/` with embedded [referer-parser](https://github.com/snowplow/referer-parser) data (search/social/email source names); store `source` alongside normalized `referrer` URL
+- [x] **UTM capture** — parse `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content` from hit path/query; persist on `kiko_hits`; expose in stats API breakdowns
+- [x] **Referrer source labels** — display names for major search/social referrers; store `source` alongside normalized `referrer` URL
 
-**Success criteria:** `curl localhost:8090/api/v1/stats/summary?host=gghstats.com` returns JSON with real data; UTM params on `?utm_source=newsletter&utm_medium=email` appear in DB and API.
+**Success criteria:** `curl localhost:8080/api/v1/stats/summary?host=gghstats.com` returns JSON with real data; UTM params on `?utm_source=newsletter&utm_medium=email` appear in DB and API.
 
 ---
 
@@ -169,7 +170,7 @@ SPA navigation fires multiple pageviews; Docker image on GHCR with grype 0 vulne
 | **Risk** | Low | Low | Medium | Medium | Low |
 | **Dependencies** | Go | PostgreSQL | P1 | P1+P2 | P1+P2+P3 |
 
-**Next:** Phase 2 — Query API + UTM/referrer enrichment.
+**Next:** Phase 3 — Hardening & distribution.
 
 ---
 

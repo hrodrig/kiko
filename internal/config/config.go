@@ -16,6 +16,7 @@ type Config struct {
 	Database     DatabaseCfg  `mapstructure:"database"`
 	Buffer       BufferCfg    `mapstructure:"buffer"`
 	RateLimit    RateLimitCfg `mapstructure:"rate_limit"`
+	API          APICfg       `mapstructure:"api"`
 	AllowedHosts []string     `mapstructure:"allowed_hosts"`
 	Visitor      VisitorCfg   `mapstructure:"visitor"`
 	Log          *log.Logger
@@ -81,6 +82,17 @@ type RateLimitCfg struct {
 	Burst          int  `mapstructure:"burst"`
 }
 
+type APICfg struct {
+	Key       string          `mapstructure:"key"`
+	RateLimit APICfgRateLimit `mapstructure:"rate_limit"`
+}
+
+type APICfgRateLimit struct {
+	Enabled        bool `mapstructure:"enabled"`
+	RequestsPerSec int  `mapstructure:"requests_per_sec"`
+	Burst          int  `mapstructure:"burst"`
+}
+
 type VisitorCfg struct {
 	// Salt for daily visitor_hash (SHA-256). Set in production via config or KIKO_VISITOR_SALT.
 	Salt string `mapstructure:"salt"`
@@ -105,6 +117,8 @@ func Load(path string) (*Config, error) {
 	v.BindEnv("database.dsn", "KIKO_DATABASE_DSN")
 	v.BindEnv("visitor.salt", "KIKO_VISITOR_SALT")
 	v.BindEnv("rate_limit.enabled", "KIKO_RATE_LIMIT_ENABLED")
+	v.BindEnv("api.key", "KIKO_API_KEY")
+	v.BindEnv("api.rate_limit.enabled", "KIKO_API_RATE_LIMIT_ENABLED")
 
 	v.SetDefault("listen", ":8080")
 	v.SetDefault("public_url", "http://localhost:8080")
@@ -122,6 +136,9 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("rate_limit.enabled", true)
 	v.SetDefault("rate_limit.requests_per_sec", 100)
 	v.SetDefault("rate_limit.burst", 200)
+	v.SetDefault("api.rate_limit.enabled", true)
+	v.SetDefault("api.rate_limit.requests_per_sec", 30)
+	v.SetDefault("api.rate_limit.burst", 60)
 
 	if path != "" {
 		v.SetConfigFile(path)
@@ -163,6 +180,12 @@ func (c *Config) validate() error {
 	}
 	if c.RateLimit.Burst <= 0 {
 		return fmt.Errorf("config: rate_limit.burst must be > 0")
+	}
+	if c.API.RateLimit.Enabled && c.API.RateLimit.RequestsPerSec <= 0 {
+		return fmt.Errorf("config: api.rate_limit.requests_per_sec must be > 0 when enabled")
+	}
+	if c.API.RateLimit.Burst <= 0 {
+		c.API.RateLimit.Burst = 60
 	}
 	switch c.Database.NormalizedDriver() {
 	case "sqlite", "postgres", "mysql":

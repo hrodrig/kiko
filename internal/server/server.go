@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hrodrig/kiko/internal/analyzer"
 	"github.com/hrodrig/kiko/internal/hit"
 	"github.com/hrodrig/kiko/internal/log"
 	"github.com/hrodrig/kiko/internal/store"
@@ -36,9 +37,11 @@ type Server struct {
 	allowedHosts []string
 	visitor      visitor.Hasher
 	rateLimiter  *RateLimiter
+	apiLimiter   *APIRateLimiter
+	stats        StatsConfig
 }
 
-func New(s store.Store, buf hit.Buffer, l *log.Logger, allowedHosts []string, v visitor.Hasher, rl *RateLimiter) *Server {
+func New(s store.Store, buf hit.Buffer, l *log.Logger, allowedHosts []string, v visitor.Hasher, rl *RateLimiter, opts ...ServerOption) *Server {
 	sv := &Server{
 		store:        s,
 		buf:          buf,
@@ -48,12 +51,30 @@ func New(s store.Store, buf hit.Buffer, l *log.Logger, allowedHosts []string, v 
 		visitor:      v,
 		rateLimiter:  rl,
 	}
+	for _, o := range opts {
+		o(sv)
+	}
 	sv.mux.HandleFunc("GET /kiko.js", sv.serveJS)
 	sv.mux.HandleFunc("POST /hit", sv.trackHit)
 	sv.mux.HandleFunc("GET /hit.gif", sv.trackGIF)
 	sv.mux.HandleFunc("GET "+HealthzPath, sv.healthz)
 	sv.mux.HandleFunc("GET "+ReadyzPath, sv.readyz)
+	if acc, ok := s.(store.DBAccessor); ok {
+		db, driver := acc.StatsDB()
+		registerStats(sv.mux, analyzer.New(db, driver), sv.stats, l)
+	}
 	return sv
+}
+
+// ServerOption configures optional Server behavior.
+type ServerOption func(*Server)
+
+// WithStats enables the read-only stats API.
+func WithStats(cfg StatsConfig, apiRL *APIRateLimiter) ServerOption {
+	return func(s *Server) {
+		s.stats = cfg
+		s.apiLimiter = apiRL
+	}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -61,6 +82,7 @@ func (s *Server) Handler() http.Handler {
 	if s.rateLimiter != nil {
 		h = s.rateLimiter.Middleware(h, PublicMiddlewareSkip())
 	}
+	h = WrapStats(h, s.apiLimiter)
 	return h
 }
 

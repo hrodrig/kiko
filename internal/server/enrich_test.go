@@ -21,6 +21,9 @@ func TestEnrichHit(t *testing.T) {
 	if h.Channel != "organic" {
 		t.Errorf("channel = %q; want organic", h.Channel)
 	}
+	if h.Source != "Google" {
+		t.Errorf("source = %q; want Google", h.Source)
+	}
 	if h.Referrer != "https://www.google.com/search" {
 		t.Errorf("referrer = %q", h.Referrer)
 	}

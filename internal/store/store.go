@@ -66,6 +66,9 @@ func (s *sqlStore) SaveHits(hits []hit.Hit) error {
 		if _, err := stmt.Exec(
 			h.Host, h.Path, nullString(h.Referrer), h.VisitorHash, h.Width, nullString(h.Title),
 			nullString(h.Browser), nullString(h.OS), nullString(h.Channel),
+			nullString(h.Source),
+			nullString(h.UTMSource), nullString(h.UTMMedium), nullString(h.UTMCampaign),
+			nullString(h.UTMTerm), nullString(h.UTMContent),
 		); err != nil {
 			return fmt.Errorf("insert hit: %w", err)
 		}
@@ -85,11 +88,11 @@ func (s *sqlStore) SaveHits(hits []hit.Hit) error {
 func insertHitSQL(driver string) string {
 	switch driver {
 	case "postgres":
-		return `INSERT INTO kiko_hits (host, path, referrer, visitor_hash, screen_width, title, browser, os, channel)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+		return `INSERT INTO kiko_hits (host, path, referrer, visitor_hash, screen_width, title, browser, os, channel, source, utm_source, utm_medium, utm_campaign, utm_term, utm_content)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
 	default:
-		return `INSERT INTO kiko_hits (host, path, referrer, visitor_hash, screen_width, title, browser, os, channel)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		return `INSERT INTO kiko_hits (host, path, referrer, visitor_hash, screen_width, title, browser, os, channel, source, utm_source, utm_medium, utm_campaign, utm_term, utm_content)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	}
 }
 
