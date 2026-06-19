@@ -119,6 +119,35 @@ func TestLoadMySQLDefaultPort(t *testing.T) {
 	}
 }
 
+func TestLoadInvalidRateLimit(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "kiko.yml")
+	content := []byte("rate_limit:\n  enabled: true\n  requests_per_sec: 0\n")
+	if err := os.WriteFile(path, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for zero requests_per_sec")
+	}
+}
+
+func TestLoadRateLimitDisabled(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "kiko.yml")
+	content := []byte("rate_limit:\n  enabled: false\n  requests_per_sec: 0\n")
+	if err := os.WriteFile(path, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() = %v", err)
+	}
+	if cfg.RateLimit.Enabled {
+		t.Error("expected rate limit disabled")
+	}
+}
+
 func TestDatabaseDSNHelpers(t *testing.T) {
 	cfg := DatabaseCfg{
 		User:     "u",

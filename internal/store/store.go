@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/hrodrig/kiko/internal/config"
 	"github.com/hrodrig/kiko/internal/hit"
@@ -62,9 +63,14 @@ func (s *sqlStore) SaveHits(hits []hit.Hit) error {
 	defer stmt.Close()
 
 	for _, h := range hits {
-		if _, err := stmt.Exec(h.Host, h.Path, nullString(h.Referrer), h.Width, nullString(h.Title)); err != nil {
+		if _, err := stmt.Exec(h.Host, h.Path, nullString(h.Referrer), h.VisitorHash, h.Width, nullString(h.Title)); err != nil {
 			return fmt.Errorf("insert hit: %w", err)
 		}
+	}
+
+	hour := time.Now().UTC().Truncate(time.Hour)
+	if err := s.aggregateHits(tx, hits, hour); err != nil {
+		return fmt.Errorf("aggregate hits: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -76,11 +82,11 @@ func (s *sqlStore) SaveHits(hits []hit.Hit) error {
 func insertHitSQL(driver string) string {
 	switch driver {
 	case "postgres":
-		return `INSERT INTO kiko_hits (host, path, referrer, screen_width, title)
-			VALUES ($1, $2, $3, $4, $5)`
+		return `INSERT INTO kiko_hits (host, path, referrer, visitor_hash, screen_width, title)
+			VALUES ($1, $2, $3, $4, $5, $6)`
 	default:
-		return `INSERT INTO kiko_hits (host, path, referrer, screen_width, title)
-			VALUES (?, ?, ?, ?, ?)`
+		return `INSERT INTO kiko_hits (host, path, referrer, visitor_hash, screen_width, title)
+			VALUES (?, ?, ?, ?, ?, ?)`
 	}
 }
 

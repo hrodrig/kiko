@@ -41,28 +41,30 @@ kiko is a privacy-first, lightweight web analytics collector:
 
 ## How it works
 
-```
-                  kiko.js (500B)
-                       │
-                  POST /hit
-                       ▼
-┌─────────────────────────────┐
-│        kiko (Go binary)     │
-│                             │
-│  ┌─────────────────────┐   │
-│  │    MemBuffer         │   │
-│  │  (chan Hit, cap 4k) │   │
-│  └─────────┬───────────┘   │
-│            │ flush cada 10s │
-│            ▼                │
-│  ┌─────────────────────┐   │
-│  │   BatchInserter     │   │
-│  │   → PostgreSQL      │   │
-│  └─────────────────────┘   │
-└─────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph browser["Browser"]
+        JS["kiko.js (~500B)"]
+    end
+
+    subgraph kiko["kiko (Go binary)"]
+        direction TB
+        IN["POST /hit · GET /hit.gif"]
+        RL["rate limit (per IP)"]
+        HASH["visitor_hash<br/>SHA-256(ip + ua + daily salt)"]
+        BUF["MemBuffer<br/>(mutex, cap 4k)"]
+        FLUSH["flush loop<br/>every 10s"]
+        INSERT["BatchInserter + aggregations"]
+
+        IN --> RL --> HASH --> BUF --> FLUSH --> INSERT
+    end
+
+    JS --> IN
+    INSERT --> DB[("SQLite / PostgreSQL / MySQL")]
+    DASH["Dashboard (separate repo)"] -.-> DB
 ```
 
-Each hit is buffered in memory (buffered channel, non-blocking). Every 10s it flushes to PostgreSQL in batch. Dashboard is a separate repo.
+Each hit is validated, hashed, and appended to an in-memory buffer (mutex-protected; drops when full). Every 10s the buffer flushes to the database in batch. Default backend is SQLite; PostgreSQL and MySQL are supported via config. Dashboard lives in a separate repo.
 
 ## Install
 
@@ -100,7 +102,7 @@ kiko serve
 kiko serve -c /etc/kiko/kiko.yml
 
 # Tracking: add to your HTML
-<script defer src="https://analytics.tudominio.com/kiko.js"></script>
+<script defer src="https://analytics.yourdomain.com/kiko.js"></script>
 ```
 
 ### Config (`kiko.yml`)
@@ -115,7 +117,7 @@ public_url: "https://analytics.yourdomain.com"
 # Log level: debug, info, warn, error
 log_level: info
 
-# PostgreSQL connection
+# Database (default: SQLite; also postgres / mysql)
 database:
   driver: sqlite
   path: ./data/kiko.db
@@ -124,15 +126,20 @@ database:
 # In-memory hit buffer
 buffer:
   flush_interval: 10   # seconds between batch flushes
-  capacity: 4096        # max hits in channel
+  capacity: 4096        # max hits in memory before drop
 
 # Rate limiting (per-IP)
 rate_limit:
+  enabled: true
   requests_per_sec: 100
   burst: 200
 
 # Only accept hits from these hosts (empty = accept all)
 allowed_hosts:
+
+# Daily visitor fingerprint salt (set in production)
+visitor:
+  salt: ""
 ```
 
 All fields overridable via env vars with `KIKO_` prefix:
@@ -155,7 +162,9 @@ All fields overridable via env vars with `KIKO_` prefix:
 | `KIKO_BUFFER_CAPACITY` | `buffer.capacity` |
 | `KIKO_RATE_LIMIT_REQUESTS_PER_SEC` | `rate_limit.requests_per_sec` |
 | `KIKO_RATE_LIMIT_BURST` | `rate_limit.burst` |
+| `KIKO_RATE_LIMIT_ENABLED` | `rate_limit.enabled` |
 | `KIKO_ALLOWED_HOSTS` | `allowed_hosts` (comma-separated) |
+| `KIKO_VISITOR_SALT` | `visitor.salt` |
 
 ### Log levels
 

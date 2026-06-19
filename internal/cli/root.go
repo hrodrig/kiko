@@ -15,6 +15,7 @@ import (
 	"github.com/hrodrig/kiko/internal/server"
 	"github.com/hrodrig/kiko/internal/store"
 	"github.com/hrodrig/kiko/internal/version"
+	"github.com/hrodrig/kiko/internal/visitor"
 	"github.com/spf13/cobra"
 )
 
@@ -110,10 +111,26 @@ func initRuntime(cfg *config.Config) (store.Store, hit.Buffer, http.Handler, fun
 	flushCtx, cancel := context.WithCancel(context.Background())
 	go runFlusher(flushCtx, st, buf, cfg)
 
-	sv := server.New(st, buf, cfg.Log, cfg.AllowedHosts)
+	vh := visitor.NewHasher(cfg.Visitor.Salt)
+	if vh.DevSalt() {
+		cfg.Log.Warn("visitor.salt not set — using dev default; set KIKO_VISITOR_SALT in production")
+	}
+
+	var rl *server.RateLimiter
+	if cfg.RateLimit.Enabled {
+		rl = server.NewRateLimiter(server.RateLimitConfig{
+			RequestsPerSec: cfg.RateLimit.RequestsPerSec,
+			Burst:          cfg.RateLimit.Burst,
+		})
+	}
+
+	sv := server.New(st, buf, cfg.Log, cfg.AllowedHosts, vh, rl)
 	cleanup := func() {
 		cancel()
 		flushHits(st, buf, cfg.Log)
+		if rl != nil {
+			rl.Shutdown()
+		}
 		st.Close()
 	}
 	return st, buf, sv.Handler(), cleanup, nil

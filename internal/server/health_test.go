@@ -9,6 +9,7 @@ import (
 
 	"github.com/hrodrig/kiko/internal/hit"
 	"github.com/hrodrig/kiko/internal/log"
+	"github.com/hrodrig/kiko/internal/visitor"
 )
 
 type pingFailStore struct{}
@@ -36,7 +37,7 @@ func TestHealthz(t *testing.T) {
 
 func TestHealthzIgnoresDBFailure(t *testing.T) {
 	buf := hit.NewBuffer(16)
-	s := New(&pingFailStore{}, buf, log.New(nil, log.Off), nil)
+	s := New(&pingFailStore{}, buf, log.New(nil, log.Off), nil, visitor.NewHasher("test"), nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", HealthzPath, nil)
 	s.mux.ServeHTTP(w, r)
@@ -47,7 +48,7 @@ func TestHealthzIgnoresDBFailure(t *testing.T) {
 
 func TestReadyzDegraded(t *testing.T) {
 	buf := hit.NewBuffer(16)
-	s := New(&pingFailStore{}, buf, log.New(nil, log.Off), nil)
+	s := New(&pingFailStore{}, buf, log.New(nil, log.Off), nil, visitor.NewHasher("test"), nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", ReadyzPath, nil)
 	s.mux.ServeHTTP(w, r)

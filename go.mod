@@ -7,6 +7,7 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
+	golang.org/x/time v0.15.0
 	modernc.org/sqlite v1.52.0
 )
 

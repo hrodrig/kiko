@@ -3,11 +3,12 @@ package hit
 import "sync"
 
 type Hit struct {
-	Host     string `json:"host"`
-	Path     string `json:"path"`
-	Referrer string `json:"referrer,omitempty"`
-	Title    string `json:"title,omitempty"`
-	Width    int    `json:"width,omitempty"`
+	Host        string `json:"host"`
+	Path        string `json:"path"`
+	Referrer    string `json:"referrer,omitempty"`
+	Title       string `json:"title,omitempty"`
+	Width       int    `json:"width,omitempty"`
+	VisitorHash string `json:"-"`
 }
 
 func (h *Hit) Normalize() {

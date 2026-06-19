@@ -42,6 +42,7 @@ buffer:
 
 # Rate limiting (per-IP token bucket)
 rate_limit:
+  enabled: true
   requests_per_sec: 100
   burst: 200
 
@@ -51,3 +52,8 @@ allowed_hosts:
   - gghstats.com
   - kzero.dev
   - hermesrodriguez.com
+
+# Daily visitor fingerprint salt (required in production)
+# Override via KIKO_VISITOR_SALT
+visitor:
+  salt: ""

@@ -17,6 +17,7 @@ type Config struct {
 	Buffer       BufferCfg    `mapstructure:"buffer"`
 	RateLimit    RateLimitCfg `mapstructure:"rate_limit"`
 	AllowedHosts []string     `mapstructure:"allowed_hosts"`
+	Visitor      VisitorCfg   `mapstructure:"visitor"`
 	Log          *log.Logger
 }
 
@@ -75,8 +76,14 @@ type BufferCfg struct {
 }
 
 type RateLimitCfg struct {
-	RequestsPerSec int `mapstructure:"requests_per_sec"`
-	Burst          int `mapstructure:"burst"`
+	Enabled        bool `mapstructure:"enabled"`
+	RequestsPerSec int  `mapstructure:"requests_per_sec"`
+	Burst          int  `mapstructure:"burst"`
+}
+
+type VisitorCfg struct {
+	// Salt for daily visitor_hash (SHA-256). Set in production via config or KIKO_VISITOR_SALT.
+	Salt string `mapstructure:"salt"`
 }
 
 func Load(path string) (*Config, error) {
@@ -96,6 +103,8 @@ func Load(path string) (*Config, error) {
 	v.BindEnv("database.dbname", "KIKO_DATABASE_DBNAME")
 	v.BindEnv("database.sslmode", "KIKO_DATABASE_SSLMODE")
 	v.BindEnv("database.dsn", "KIKO_DATABASE_DSN")
+	v.BindEnv("visitor.salt", "KIKO_VISITOR_SALT")
+	v.BindEnv("rate_limit.enabled", "KIKO_RATE_LIMIT_ENABLED")
 
 	v.SetDefault("listen", ":8080")
 	v.SetDefault("public_url", "http://localhost:8080")
@@ -110,6 +119,7 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("database.sslmode", "disable")
 	v.SetDefault("buffer.flush_interval", 10)
 	v.SetDefault("buffer.capacity", 4096)
+	v.SetDefault("rate_limit.enabled", true)
 	v.SetDefault("rate_limit.requests_per_sec", 100)
 	v.SetDefault("rate_limit.burst", 200)
 
@@ -147,6 +157,12 @@ func (c *Config) validate() error {
 	}
 	if c.Buffer.Capacity <= 0 {
 		return fmt.Errorf("config: buffer.capacity must be > 0")
+	}
+	if c.RateLimit.Enabled && c.RateLimit.RequestsPerSec <= 0 {
+		return fmt.Errorf("config: rate_limit.requests_per_sec must be > 0 when rate limiting is enabled")
+	}
+	if c.RateLimit.Burst <= 0 {
+		return fmt.Errorf("config: rate_limit.burst must be > 0")
 	}
 	switch c.Database.NormalizedDriver() {
 	case "sqlite", "postgres", "mysql":
