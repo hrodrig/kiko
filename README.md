@@ -30,13 +30,11 @@ make build
 
 ## Why kiko
 
-Google Analytics is overkill. Matomo requires PHP. GoatCounter and Pirsch are great but you don't control them 100%.
-
-kiko is born from frustration with over-engineered analytics — a collector that:
+kiko is a privacy-first, lightweight web analytics collector:
 
 - **No cookies** — SHA-256 visitor hash with daily salt. No GDPR banner needed.
 - **No Node in production** — tracking script is 500 bytes JS. Server is a static Go binary.
-- **Passes audits** — govulncheck, grype, gocyclo, cover. Same standard as [gghstats](https://github.com/hrodrig/gghstats), [kzero](https://github.com/hrodrig/kzero), [groot](https://github.com/hrodrig/groot).
+- **Passes audits** — govulncheck, grype, gocyclo, cover. Same standard as sibling projects.
 - **Single binary** — Go, CGO disabled, distroless. 2.5MB compiled.
 
 ## How it works

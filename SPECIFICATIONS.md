@@ -7,7 +7,7 @@
 
 ## 1. Philosophy
 
-**kiko** is born from frustration with over-engineered analytics — Google Analytics, Matomo, and the like.
+**kiko** is a privacy-first, lightweight web analytics collector. No cookies, no JavaScript runtime on servers, one static binary.
 It follows the same principles as gghstats, kzero, groot, vision:
 
 - **"Boring Hardware"** — predictable, maintainable tools, no magic

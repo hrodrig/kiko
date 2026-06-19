@@ -7,9 +7,8 @@
 
 ## Vision
 
-**kiko** is a Google Analytics replacement that fits in a <15MB Go binary.
-No cookies, no Node, no external dependencies. Runs in a MicroK8s Pod,
-writes to PostgreSQL, passes all audits.
+**kiko** is a privacy-first web analytics collector. No cookies, no Node, one static binary.
+Writes to PostgreSQL, passes all audits.
 
 ---
 
