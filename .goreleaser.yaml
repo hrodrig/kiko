@@ -81,9 +81,9 @@ nfpms:
         dst: /usr/share/man/man1/kiko.1
 
 dockers_v2:
-  - id: kiko
-    goos: linux
-    goarch: amd64
+  - id: kiko-amd64
+    ids:
+      - kiko
     dockerfile: Dockerfile.release
     image_templates:
       - "ghcr.io/hrodrig/kiko:{{ .Version }}"
@@ -93,11 +93,10 @@ dockers_v2:
       - "--label=org.opencontainers.image.description=Privacy-first web analytics collector"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.created={{ .Date }}"
-    use_buildx: true
     disable: "{{ .IsSnapshot }}"
   - id: kiko-arm64
-    goos: linux
-    goarch: arm64
+    ids:
+      - kiko
     dockerfile: Dockerfile.release
     image_templates:
       - "ghcr.io/hrodrig/kiko:{{ .Version }}-arm64"
@@ -107,7 +106,6 @@ dockers_v2:
       - "--label=org.opencontainers.image.description=Privacy-first web analytics collector"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.created={{ .Date }}"
-    use_buildx: true
     disable: "{{ .IsSnapshot }}"
 
 docker_manifests:
@@ -124,14 +122,14 @@ docker_manifests:
 
 homebrew_casks:
   - name: kiko
-    tap:
+    repository:
       owner: hrodrig
       name: homebrew-kiko
     description: Privacy-first web analytics collector
     homepage: https://github.com/hrodrig/kiko
     license: MIT
-    install: |
-      bin.install "kiko"
-      man1.install "contrib/man/man1/kiko.1"
-    post_install: |
-      system "xattr", "-dr", "com.apple.quarantine", "#{staged_path}/kiko"
+    install:
+      - bin.install "kiko"
+      - man1.install "contrib/man/man1/kiko.1"
+    post_install:
+      - system "xattr", "-dr", "com.apple.quarantine", "#{staged_path}/kiko"
