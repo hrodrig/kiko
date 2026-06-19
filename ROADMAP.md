@@ -85,11 +85,19 @@ Writes to PostgreSQL, passes all audits.
   - `GET /api/v1/stats/refs?host=&since=&until=&limit=` — top referrers
   - `GET /api/v1/stats/timeline?host=&since=&until=&interval=` — time series by day/hour
   - `GET /api/v1/stats/visitors?host=&since=&until=` — unique visitors
+  - `GET /api/v1/stats/channels?host=&since=&until=` — breakdown by channel (direct, organic, social, …)
+  - `GET /api/v1/stats/browsers?host=&since=&until=&limit=` — breakdown by browser
+  - `GET /api/v1/stats/os?host=&since=&until=&limit=` — breakdown by OS
 - [ ] JSON output with cache headers (CDN-friendly)
 - [ ] Rate limiting by API key
 - [ ] Tests: unit + integration with PostgreSQL
 
-**Success criteria:** `curl localhost:8090/api/v1/stats/summary?host=gghstats.com` returns JSON with real data.
+**Ingest enrichment (Plausible-inspired, collector side):**
+
+- [ ] **UTM capture** — parse `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content` from hit path/query; persist on `kiko_hits`; expose in stats API breakdowns
+- [ ] **Referrer source labels** — extend `internal/ref/` with embedded [referer-parser](https://github.com/snowplow/referer-parser) data (search/social/email source names); store `source` alongside normalized `referrer` URL
+
+**Success criteria:** `curl localhost:8090/api/v1/stats/summary?host=gghstats.com` returns JSON with real data; UTM params on `?utm_source=newsletter&utm_medium=email` appear in DB and API.
 
 ---
 
@@ -99,10 +107,15 @@ Writes to PostgreSQL, passes all audits.
 
 - [ ] Multi-level rate limiting (by IP, by host) — per-IP done in Phase 1
 - [ ] Bot filtering: prefetch headers, known bots, UA validation
+- [ ] **Referrer spam blocklist** — static domain list; drop hits with known spam referrers
+- [ ] **Optional datacenter IP blocklist** — static CIDR file; configurable on/off (lightweight CE-style filter)
 - [ ] IP ignore list (configurable, exclude own IPs)
+- [ ] **Proxy-aware client IP** — first valid IP from `X-Forwarded-For`; reject private/loopback when proxy misconfigured
+- [ ] **Debug ingest headers** — `X-Kiko-Dropped: 1` on silent reject (bot/prefetch/spam); optional `X-Debug-Request: true` returns IP used for visitor hash (Traefik/Ingress troubleshooting)
+- [ ] **`kiko.js` SPA support** — auto pageviews on `history.pushState` / `popstate`; optional `hashchange` for hash-based routing; keep script ~500B–1KB
 - [ ] `configs/kiko.yml.sample` — documented config
 - [ ] `scripts/install.sh` — `curl | sh` installer
-- [ ] First real release to GitHub (tag v0.4.0)
+- [ ] Production-hardened release (tag v0.4.0)
 - [ ] Homebrew cask published
 - [ ] .deb + .rpm packages via nfpm
 - [ ] Docker multi-arch published to GHCR
@@ -113,8 +126,8 @@ Writes to PostgreSQL, passes all audits.
   - Ingress with Traefik + auth middleware
 - [ ] CHANGELOG v0.4.0
 
-**Success criteria:** `brew install hrodrig/kiko/kiko && kiko serve` works,
-Docker image on GHCR with grype 0 vulnerabilities.
+**Success criteria:** `brew install hrodrig/kiko/kiko && kiko serve` works;
+SPA navigation fires multiple pageviews; Docker image on GHCR with grype 0 vulnerabilities.
 
 ---
 
@@ -124,9 +137,10 @@ Docker image on GHCR with grype 0 vulnerabilities.
 
 - [ ] CSV export (raw hits by date range)
 - [ ] Data retention policy (auto-purge old hits, keep aggregated stats)
-- [ ] Custom events (optional: `POST /event` with metadata)
+- [ ] **Custom events** — extend `POST /hit` (or `POST /event`) with `name` + optional `props` (JSON, capped); aggregate by event name for **kui**
+- [ ] **Auto-capture (optional, `kiko.js` flags)** — outbound link clicks, file downloads, form submissions (Plausible-style, off by default)
 - [ ] Geography: optional GeoIP via MaxMind GeoLite2 (country-level)
-- [ ] Channel classification (organic, social, direct, referral, email, ai)
+- [ ] Channel classification: add **ai** referrer bucket (ChatGPT, Perplexity, …) — direct/organic/social/email/referral done in Phase 1
 - [ ] Prometheus metrics endpoint (`/metrics`) for kiko self-monitoring
 - [ ] Load testing: ensure 10k hits/s throughput on a single Pod
 - [ ] Complete docs: SPECIFICATIONS.md + ROADMAP.md + API docs
@@ -155,4 +169,22 @@ Docker image on GHCR with grype 0 vulnerabilities.
 | **Risk** | Low | Low | Medium | Medium | Low |
 | **Dependencies** | Go | PostgreSQL | P1 | P1+P2 | P1+P2+P3 |
 
-**Next:** Phase 0. Done.
+**Next:** Phase 2 — Query API + UTM/referrer enrichment.
+
+---
+
+## Reference: [Plausible Analytics](https://github.com/plausible/analytics)
+
+Ideas adopted into this roadmap (patterns and contracts only — no AGPL code):
+
+| Idea | Phase | Notes |
+|------|-------|-------|
+| Stats API breakdowns (channels, browsers, OS) | 2 | Shape for **kui** |
+| UTM params from page URL | 2 | Campaign tracking |
+| referer-parser source labels | 2 | Better than hardcoded host lists |
+| SPA `pushState` / hash routing in tracker | 3 | ~500B–1KB budget |
+| Proxy IP + debug/dropped headers | 3 | Ingress/Treafik ops |
+| Referrer spam + optional DC IP blocklist | 3 | CE-style bot hygiene |
+| Custom events + auto-capture | 4 | Optional, off by default |
+
+Tracker reference (MIT): [@plausible-analytics/tracker](https://www.npmjs.com/package/@plausible-analytics/tracker) — read-only for SPA/event patterns; **kiko.js** stays self-hosted and minimal.
