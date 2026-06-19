@@ -32,7 +32,7 @@ builds:
         goarch: arm64
 
 archives:
-  - id: default
+  - id: kiko
     formats: ["tar.gz"]
     format_overrides:
       - goos: windows
