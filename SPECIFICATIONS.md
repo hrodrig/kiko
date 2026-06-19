@@ -16,9 +16,47 @@ It follows the same principles as gghstats, kzero, groot, vision:
 - **Privacy by design** — no cookies, no personal data stored
 - **Passes all audits** — govulncheck, grype, gocyclo, cover, go vet, gofmt
 
+The hero banner ([`assets/kiko-hero-full.png`](assets/kiko-hero-full.png), also in [README.md](README.md)) encodes the product thesis: a Go collector scoped to **one job** — gather web analytics on infrastructure you control, without turning visitors into tracking targets.
+
+### 1.1 Design principles
+
+These principles drive implementation choices across the codebase. They are the design intent behind the hero diagram, expressed in engineering terms.
+
+| Principle | Intent | Implementation |
+|-----------|--------|----------------|
+| **Light and fast** | Minimal client footprint; server tuned for throughput | `kiko.js` (~500B) via `sendBeacon` / pixel fallback; single static Go binary; hot path is validate → hash → append |
+| **Privacy by default** | Measurement without surveillance | Cookie-free; `visitor_hash = SHA-256(ip + ua + daily_salt)`; IP never persisted (see [§2.3](#23-privacy-by-design)) |
+| **Buffer, then batch** | Decouple ingestion from database I/O | `MemBuffer` (mutex, configurable cap); flush loop every `buffer.flush_interval` seconds; sorted batch inserts + hourly aggregations |
+| **Your database, your choice** | Portable storage, operator picks the engine | Same logical schema and flush logic for **SQLite** (default), **PostgreSQL**, and **MySQL** via driver abstraction in `internal/store/` |
+
+**Light and fast.** A ~500-byte tracking script feeds a compact Go binary built for throughput. Inbound hits are validated and hashed quickly — no heavyweight client SDK, no JavaScript runtime on the server. The collector does one thing repeatedly and well: absorb traffic and move on.
+
+**Privacy by default.** The pipeline runs inside a cookie-free boundary. Visitors are ephemeral daily hashes, not persistent profiles; IP addresses exist in memory only for hashing and never reach disk. Analytics you own — not cross-site fingerprinting or third-party surveillance.
+
+**Buffer, then batch.** Hits land in an in-memory buffer first (the "buffered hits" stage in the diagram). On a fixed interval they are sorted, aggregated, and written as organized batch inserts plus hourly rollups. The hot path stays O(1) append; database work is batched and predictable.
+
+**Your database, your choice.** One collector, three backends. Operators choose **SQLite** for zero-config defaults, **PostgreSQL** or **MySQL** for existing infrastructure — same schema, same flush semantics, no application fork.
+
+Together, these define kiko's scope: a robust Go backend dedicated to collecting analytics **sovereignly and respectfully** — not an all-in-one marketing platform, CRM, or tag manager. The **kui** UI (*kiko* + *ui*) is a separate future project; this repo stops at collection, storage, and (Phase 2) the query API kui will consume.
+
+### 1.2 kiko and kui
+
+| Name | Role | Repo | Status |
+|------|------|------|--------|
+| **kiko** | Metrics **collector** — `kiko.js`, hit ingestion, visitor hashing, in-memory buffer, batch persistence, query API | [github.com/hrodrig/kiko](https://github.com/hrodrig/kiko) | Active (this repo) |
+| **kui** | Analytics **UI** — charts, tables, reports over kiko's aggregated stats (*kiko* + *ui*) | [github.com/hrodrig/kui](https://github.com/hrodrig/kui) | Planned |
+
+**kiko** is server-side collection and storage only. It does not ship a dashboard or admin UI.
+
+**kui** is the companion front end. It will read from kiko's REST API (Phase 2) or query the same database in self-hosted stacks. Favicons under [`assets/favicons/`](assets/favicons/) are reserved for kui branding.
+
+The hero banner labels the right-hand browser window "DASHBOARD REPO"; in product terms that slot is **kui**.
+
 ---
 
 ## 2. Architecture
+
+The architecture diagram below matches the hero banner pipeline: browser → kiko collector (rate limit, hash, buffer, flush) → database → **kui** UI (separate repo, future).
 
 ```mermaid
 flowchart LR
@@ -40,16 +78,16 @@ flowchart LR
 
     JS --> IN
     INSERT --> DB[("SQLite / PostgreSQL / MySQL")]
-    DASH["Dashboard (separate repo)"] -.-> DB
+    DASH["kui (UI, separate repo)"] -.-> DB
 ```
 
 ### 2.1 Components
 
 | Component | Description | Language | Status |
 |-----------|-------------|----------|--------|
-| **kiko** | Collector backend: receives hits, in-memory buffer, batch insert + hourly aggregations | Go | MVP |
+| **kiko** | Collector backend: receives hits, in-memory buffer, batch insert + hourly aggregations, query API (Phase 2) | Go | MVP |
 | **kiko.js** | Tracking script (~500B) sending hits via sendBeacon or `<img>` fallback | JS | MVP |
-| **dashboard** | Separate repo. Consumes kiko API. Go native, SPA, TBD | — | Future |
+| **kui** | Analytics UI (*kiko* + *ui*). Separate repo. Consumes kiko query API. Charts, tables, reports | [github.com/hrodrig/kui](https://github.com/hrodrig/kui) | Planned |
 
 ### 2.2 Hit flow
 
@@ -107,7 +145,7 @@ CREATE TABLE kiko_refs (
     UNIQUE(host, referrer)
 );
 
--- Hourly aggregated counts (for fast dashboards)
+-- Hourly aggregated counts (for fast kui dashboards)
 CREATE TABLE kiko_hit_counts (
     host        VARCHAR(255) NOT NULL,
     path_id     INTEGER NOT NULL REFERENCES kiko_paths(id),
