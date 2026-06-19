@@ -26,32 +26,42 @@ func (s *sqlStore) aggregateHits(tx *sql.Tx, hits []hit.Hit, hour time.Time) err
 	refs := map[string]*refAgg{}
 
 	for _, h := range hits {
-		pk := h.Host + "\x00" + h.Path
-		p, ok := paths[pk]
-		if !ok {
-			p = &pathAgg{host: h.Host, path: h.Path, title: h.Title, hash: map[string]struct{}{}}
-			paths[pk] = p
-		}
-		p.total++
-		if h.Title != "" && p.title == "" {
-			p.title = h.Title
-		}
-		if h.VisitorHash != "" {
-			p.hash[h.VisitorHash] = struct{}{}
-		}
+		accumulateHit(paths, refs, h)
+	}
+	if err := s.flushPathAggs(tx, paths, hour); err != nil {
+		return err
+	}
+	return s.flushRefAggs(tx, refs, hour)
+}
 
-		if h.Referrer == "" {
-			continue
-		}
-		rk := h.Host + "\x00" + h.Referrer
-		r, ok := refs[rk]
-		if !ok {
-			r = &refAgg{host: h.Host, referrer: h.Referrer}
-			refs[rk] = r
-		}
-		r.total++
+func accumulateHit(paths map[string]*pathAgg, refs map[string]*refAgg, h hit.Hit) {
+	pk := h.Host + "\x00" + h.Path
+	p, ok := paths[pk]
+	if !ok {
+		p = &pathAgg{host: h.Host, path: h.Path, title: h.Title, hash: map[string]struct{}{}}
+		paths[pk] = p
+	}
+	p.total++
+	if h.Title != "" && p.title == "" {
+		p.title = h.Title
+	}
+	if h.VisitorHash != "" {
+		p.hash[h.VisitorHash] = struct{}{}
 	}
 
+	if h.Referrer == "" {
+		return
+	}
+	rk := h.Host + "\x00" + h.Referrer
+	r, ok := refs[rk]
+	if !ok {
+		r = &refAgg{host: h.Host, referrer: h.Referrer}
+		refs[rk] = r
+	}
+	r.total++
+}
+
+func (s *sqlStore) flushPathAggs(tx *sql.Tx, paths map[string]*pathAgg, hour time.Time) error {
 	for _, p := range paths {
 		pathID, err := s.upsertPath(tx, p.host, p.path, p.title)
 		if err != nil {
@@ -66,7 +76,10 @@ func (s *sqlStore) aggregateHits(tx *sql.Tx, hits []hit.Hit, hour time.Time) err
 			}
 		}
 	}
+	return nil
+}
 
+func (s *sqlStore) flushRefAggs(tx *sql.Tx, refs map[string]*refAgg, hour time.Time) error {
 	for _, r := range refs {
 		refID, err := s.upsertRef(tx, r.host, r.referrer)
 		if err != nil {
