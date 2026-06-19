@@ -19,7 +19,39 @@ func migrate(db *sql.DB, driver string) error {
 			}
 		}
 	}
+	if err := migrateHitMeta(db, driver); err != nil {
+		return err
+	}
 	return nil
+}
+
+func migrateHitMeta(db *sql.DB, driver string) error {
+	cols := []string{"browser", "os", "channel"}
+	for _, col := range cols {
+		stmt := hitMetaAlterSQL(driver, col)
+		if stmt == "" {
+			continue
+		}
+		if _, err := db.Exec(stmt); err != nil {
+			low := strings.ToLower(err.Error())
+			if strings.Contains(low, "duplicate column") || strings.Contains(low, "already exists") {
+				continue
+			}
+			return fmt.Errorf("migrate hit meta (%s): %w", col, err)
+		}
+	}
+	return nil
+}
+
+func hitMetaAlterSQL(driver, col string) string {
+	switch driver {
+	case "postgres":
+		return fmt.Sprintf(`ALTER TABLE kiko_hits ADD COLUMN IF NOT EXISTS %s VARCHAR(64)`, col)
+	case "mysql":
+		return fmt.Sprintf(`ALTER TABLE kiko_hits ADD COLUMN %s VARCHAR(64) NULL`, col)
+	default:
+		return fmt.Sprintf(`ALTER TABLE kiko_hits ADD COLUMN %s TEXT`, col)
+	}
 }
 
 func schemaSQL(driver string) []string {
@@ -43,6 +75,9 @@ func hitsTableSQL(driver string) []string {
 				visitor_hash CHAR(64) NOT NULL DEFAULT '',
 				screen_width SMALLINT,
 				title TEXT,
+				browser VARCHAR(64),
+				os VARCHAR(64),
+				channel VARCHAR(64),
 				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 			)`,
 			`CREATE INDEX IF NOT EXISTS idx_kiko_hits_host_date ON kiko_hits (host, created_at DESC)`,
@@ -57,6 +92,9 @@ func hitsTableSQL(driver string) []string {
 				visitor_hash CHAR(64) NOT NULL DEFAULT '',
 				screen_width SMALLINT,
 				title TEXT,
+				browser VARCHAR(64),
+				os VARCHAR(64),
+				channel VARCHAR(64),
 				created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
 			)`,
 		}
@@ -70,6 +108,9 @@ func hitsTableSQL(driver string) []string {
 				visitor_hash TEXT NOT NULL DEFAULT '',
 				screen_width INTEGER,
 				title TEXT,
+				browser TEXT,
+				os TEXT,
+				channel TEXT,
 				created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 			)`,
 			`CREATE INDEX IF NOT EXISTS idx_kiko_hits_host_date ON kiko_hits (host, created_at)`,

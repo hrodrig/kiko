@@ -9,6 +9,9 @@ type Hit struct {
 	Title       string `json:"title,omitempty"`
 	Width       int    `json:"width,omitempty"`
 	VisitorHash string `json:"-"`
+	Browser     string `json:"-"`
+	OS          string `json:"-"`
+	Channel     string `json:"-"`
 }
 
 func (h *Hit) Normalize() {

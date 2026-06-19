@@ -63,7 +63,10 @@ func (s *sqlStore) SaveHits(hits []hit.Hit) error {
 	defer stmt.Close()
 
 	for _, h := range hits {
-		if _, err := stmt.Exec(h.Host, h.Path, nullString(h.Referrer), h.VisitorHash, h.Width, nullString(h.Title)); err != nil {
+		if _, err := stmt.Exec(
+			h.Host, h.Path, nullString(h.Referrer), h.VisitorHash, h.Width, nullString(h.Title),
+			nullString(h.Browser), nullString(h.OS), nullString(h.Channel),
+		); err != nil {
 			return fmt.Errorf("insert hit: %w", err)
 		}
 	}
@@ -82,11 +85,11 @@ func (s *sqlStore) SaveHits(hits []hit.Hit) error {
 func insertHitSQL(driver string) string {
 	switch driver {
 	case "postgres":
-		return `INSERT INTO kiko_hits (host, path, referrer, visitor_hash, screen_width, title)
-			VALUES ($1, $2, $3, $4, $5, $6)`
+		return `INSERT INTO kiko_hits (host, path, referrer, visitor_hash, screen_width, title, browser, os, channel)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 	default:
-		return `INSERT INTO kiko_hits (host, path, referrer, visitor_hash, screen_width, title)
-			VALUES (?, ?, ?, ?, ?, ?)`
+		return `INSERT INTO kiko_hits (host, path, referrer, visitor_hash, screen_width, title, browser, os, channel)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	}
 }
 
