@@ -80,52 +80,41 @@ nfpms:
       - src: ./contrib/man/man1/kiko.1
         dst: /usr/share/man/man1/kiko.1
 
-dockers:
-  - id: kiko-amd64
+dockers_v2:
+  - dockerfile: Dockerfile.release
     ids:
       - kiko
-    dockerfile: Dockerfile.release
-    image_templates:
-      - "ghcr.io/hrodrig/kiko:{{ .Version }}"
-      - "ghcr.io/hrodrig/kiko:latest"
-    build_flag_templates:
-      - "--label=org.opencontainers.image.title=kiko"
-      - "--label=org.opencontainers.image.description=Privacy-first web analytics collector"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.created={{ .Date }}"
-  - id: kiko-arm64
-    ids:
-      - kiko
-    dockerfile: Dockerfile.release
-    image_templates:
-      - "ghcr.io/hrodrig/kiko:{{ .Version }}-arm64"
-      - "ghcr.io/hrodrig/kiko:latest-arm64"
-    build_flag_templates:
-      - "--label=org.opencontainers.image.title=kiko"
-      - "--label=org.opencontainers.image.description=Privacy-first web analytics collector"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.created={{ .Date }}"
+    images:
+      - ghcr.io/hrodrig/kiko
+    tags:
+      - "v{{ .Version }}"
+      - "{{ if not .IsSnapshot }}latest{{ end }}"
+    labels:
+      org.opencontainers.image.title: "kiko"
+      org.opencontainers.image.description: "Privacy-first web analytics collector"
+      org.opencontainers.image.source: "https://github.com/hrodrig/kiko"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.created: "{{ .Date }}"
 
-docker_manifests:
-  - id: kiko
-    name_template: "ghcr.io/hrodrig/kiko:{{ .Version }}"
-    image_templates:
-      - "ghcr.io/hrodrig/kiko:{{ .Version }}"
-      - "ghcr.io/hrodrig/kiko:{{ .Version }}-arm64"
-  - id: kiko-latest
-    name_template: "ghcr.io/hrodrig/kiko:latest"
-    image_templates:
-      - "ghcr.io/hrodrig/kiko:latest"
-      - "ghcr.io/hrodrig/kiko:latest-arm64"
-
-brews:
+homebrew_casks:
   - name: kiko
-    tap:
+    ids:
+      - kiko
+    binaries:
+      - kiko
+    repository:
       owner: hrodrig
       name: homebrew-kiko
-    description: Privacy-first web analytics collector
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Casks
     homepage: https://github.com/hrodrig/kiko
+    description: "Privacy-first web analytics collector"
     license: MIT
-    install: |
-      bin.install "kiko"
-      man1.install "contrib/man/man1/kiko.1"
+    url:
+      template: "https://github.com/hrodrig/kiko/releases/download/{{ .Tag }}/kiko_{{ .Tag }}_{{ .Os }}_{{ .Arch }}.tar.gz"
+      verified: "github.com/hrodrig/kiko/"
+    install:
+      - bin.install "kiko"
+      - man1.install "contrib/man/man1/kiko.1"
