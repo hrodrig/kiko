@@ -42,7 +42,7 @@ jobs:
       - name: Install GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
-          version: '2.10.0'
+          version: 'v2.10.0'
           install-only: true
 
       - name: Run GoReleaser
