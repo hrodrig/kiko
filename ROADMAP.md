@@ -14,25 +14,38 @@ Writes to PostgreSQL, passes all audits.
 
 ## Phases
 
-### 🟢 Phase 0: Foundation (`v0.1.0`) — 1-2 sprints
+### ✅ Phase 0: Foundation (`v0.1.0`) — Done
 
 **Goal:** Project skeleton compiles, quality gates pass, structure ready.
 
-- [ ] `go mod init github.com/hrodrig/kiko`
-- [ ] `cmd/kiko/main.go` with Cobra CLI (`serve` subcommand)
-- [ ] `internal/version/` with ldflags injection
-- [ ] `internal/config/` with Viper (YAML + env)
-- [ ] `VERSION` file (`0.1.0`), `LICENSE` (MIT)
-- [ ] `Makefile` with targets: `build`, `test`, `lint`, `cover`, `security`, `release-check`
-- [ ] `.goreleaser.yaml` v2: linux/darwin/windows/freebsd/openbsd × amd64/arm64
-- [ ] GitHub Actions: `ci.yml`, `security.yml`, `codeql.yml`, `release.yml`
-- [ ] `Dockerfile` + `Dockerfile.release` (distroless/static)
-- [ ] `contrib/freebsd/` + `contrib/openbsd/port/` (port skeletons)
-- [ ] `contrib/man/man1/kiko.1` (man page skeleton)
-- [ ] `codecov.yml`
-- [ ] `README.md` + `CHANGELOG.md` + `CONTRIBUTING.md` + `SECURITY.md`
-- [ ] `.gitignore` (deny-all + allowlist)
-- [ ] Quality gates passing: gocyclo ≤14, coverage ≥80%, govulncheck clean, grype clean
+- [x] `go mod init github.com/hrodrig/kiko`
+- [x] `cmd/kiko/main.go` with Cobra CLI (`serve` subcommand)
+- [x] `internal/version/` with ldflags injection
+- [x] `internal/config/` with Viper (YAML + env)
+- [x] `internal/cli/` with Cobra wiring
+- [x] `VERSION` file (`0.1.0`), `LICENSE` (MIT)
+- [x] `Makefile` with targets: `build`, `test`, `lint`, `cover`, `security`, `release-check`
+- [x] `.goreleaser.yaml` v2: linux/darwin/windows/freebsd/openbsd × amd64/arm64
+- [x] GitHub Actions: `ci.yml`, `security.yml`, `codeql.yml`, `release.yml`
+- [x] `Dockerfile` + `Dockerfile.release` (distroless/static)
+- [x] `contrib/freebsd/` + `contrib/openbsd/port/` (port skeletons)
+- [x] `contrib/man/man1/kiko.1` (man page skeleton)
+- [x] `contrib/systemd/kiko.service`
+- [x] `codecov.yml`
+- [x] `README.md` + `CHANGELOG.md` + `CONTRIBUTING.md` + `SECURITY.md`
+- [x] `SPECIFICATIONS.md` + `ROADMAP.md`
+- [x] `.gitignore` (deny-all + allowlist)
+- [x] `homebrew-kiko` tap repo created
+- [x] Quality gates passing: gocyclo ≤14, coverage 84.1% ≥80%, govulncheck clean, grype clean, lint clean
+
+**Bonus (started Phase 1 items):**
+- [x] `internal/hit/` with Hit type + Buffer (channel-based)
+- [x] `internal/server/` with HTTP handlers (kiko.js, hit, hit.gif, health)
+- [x] `internal/log/` with leveled logger (Trace → Off)
+- [x] `internal/validate/` with host allowlist, bot detection, prefetch filtering
+- [x] `internal/store/` with Store interface + NopStore
+- [x] Tests: 84.1% total coverage (validate 96.7%, store 100%, server 85.9%)
+- [x] Pushed to `github.com/hrodrig/kiko`
 
 **Success criteria:** `make release-check` passes cleanly locally and in CI.
 
