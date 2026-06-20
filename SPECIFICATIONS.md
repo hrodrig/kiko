@@ -302,6 +302,13 @@ Liveness probe — process up, no dependency checks.
 ### `GET /api/v1/readyz`
 Readiness probe — database ping + buffer stats.
 
+### `GET /api/v1/version`
+Public build metadata for **kui** and operators. Same fields as `kiko version`. No API key required.
+
+```json
+{"version":"0.4.0","commit":"abc1234","build_date":"2026-06-19T12:00:00Z","branch":"main"}
+```
+
 ---
 
 ## 5. Tracking script (`kiko.js`)

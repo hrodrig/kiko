@@ -44,8 +44,7 @@ func Execute() int {
 		Use:   "version",
 		Short: "Print version info",
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Printf("kiko %s (commit %s, built %s, branch %s)\n",
-				version.Version, version.Commit, version.BuildDate, version.Branch)
+			cmd.Println(version.BuildInfo())
 		},
 	}
 	root.AddCommand(versionCmd)

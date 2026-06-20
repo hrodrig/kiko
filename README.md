@@ -6,7 +6,7 @@
   <em>High-performance, cookie-free, batteries-included server-side analytics.</em>
 </p>
 
-[![Version](https://img.shields.io/badge/version-0.4.0-blue)](https://github.com/hrodrig/kiko/releases)
+[![Version](https://img.shields.io/badge/version-0.4.1-blue)](https://github.com/hrodrig/kiko/releases)
 [![Release](https://img.shields.io/github/v/release/hrodrig/kiko)](https://github.com/hrodrig/kiko/releases)
 [![CI](https://github.com/hrodrig/kiko/actions/workflows/ci.yml/badge.svg)](https://github.com/hrodrig/kiko/actions)
 [![Security](https://github.com/hrodrig/kiko/actions/workflows/security.yml/badge.svg)](https://github.com/hrodrig/kiko/actions/workflows/security.yml)
@@ -275,6 +275,7 @@ The server embeds `kiko.js` (~500B). It sends `POST /hit` via `navigator.sendBea
 | `/hit.gif` | GET | Pixel fallback |
 | `/api/v1/healthz` | GET | Liveness probe |
 | `/api/v1/readyz` | GET | Readiness probe (DB + buffer) |
+| `/api/v1/version` | GET | Build metadata — same fields as `kiko version` (public, no auth) |
 | `/api/v1/stats/summary` | GET | Headline metrics (hits, uniques, top path) |
 | `/api/v1/stats/paths` | GET | Top paths |
 | `/api/v1/stats/refs` | GET | Top referrers |

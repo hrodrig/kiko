@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-20
+
+### Added
+
+- **`GET /api/v1/version`** — public JSON build metadata (`version`, `commit`, `build_date`, `branch`); same fields as `kiko version` via shared `version.BuildInfo()`.
+
 ## [0.4.0] - 2026-06-19
 
 ### Added
