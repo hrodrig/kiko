@@ -17,7 +17,11 @@ func testServer(allowed []string) *Server {
 	buf := hit.NewBuffer(4096)
 	st := store.NewNop()
 	l := log.New(nil, log.Trace)
-	return New(st, buf, l, allowed, visitor.NewHasher("test-salt"), nil)
+	f, err := NewHitFilter(FilterConfig{AllowedHosts: allowed})
+	if err != nil {
+		panic(err)
+	}
+	return New(st, buf, l, visitor.NewHasher("test-salt"), nil, WithIngest(f, nil, false))
 }
 
 func TestServeJS(t *testing.T) {
@@ -35,9 +39,18 @@ func TestServeJS(t *testing.T) {
 	if !strings.HasPrefix(ct, "application/javascript") {
 		t.Errorf("Content-Type = %q; want application/javascript", ct)
 	}
-	if !strings.Contains(w.Body.String(), "(function") {
-		t.Error("kiko.js body missing (function")
+	if !strings.Contains(w.Body.String(), "pushState") {
+		t.Error("kiko.js missing SPA pushState hook")
 	}
+}
+
+func mustFilter(t *testing.T, allowed []string) *HitFilter {
+	t.Helper()
+	f, err := NewHitFilter(FilterConfig{AllowedHosts: allowed})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return f
 }
 
 func TestHealth(t *testing.T) {
@@ -61,7 +74,7 @@ func TestHealth(t *testing.T) {
 func TestTrackHit_SetsVisitorHash(t *testing.T) {
 	buf := hit.NewBuffer(4096)
 	vh := visitor.NewHasher("test-salt")
-	s := New(store.NewNop(), buf, log.New(nil, log.Off), nil, vh, nil)
+	s := New(store.NewNop(), buf, log.New(nil, log.Off), vh, nil, WithIngest(mustFilter(t, nil), nil, false))
 
 	body := `{"host":"test.dev","path":"/blog"}`
 	w := httptest.NewRecorder()
@@ -116,6 +129,9 @@ func TestTrackHit_RejectBot(t *testing.T) {
 	ct := w.Header().Get("Content-Type")
 	if !strings.HasPrefix(ct, "image/gif") {
 		t.Errorf("Content-Type = %q; want image/gif", ct)
+	}
+	if w.Header().Get(headerKikoDropped) != "1" {
+		t.Error("expected X-Kiko-Dropped on bot reject")
 	}
 }
 
@@ -217,7 +233,7 @@ func TestQueryInt(t *testing.T) {
 func TestHandlerWrapsRateLimiter(t *testing.T) {
 	rl := NewRateLimiter(RateLimitConfig{RequestsPerSec: 1, Burst: 1})
 	defer rl.Shutdown()
-	s := New(store.NewNop(), hit.NewBuffer(16), log.New(nil, log.Off), nil, visitor.NewHasher("s"), rl)
+	s := New(store.NewNop(), hit.NewBuffer(16), log.New(nil, log.Off), visitor.NewHasher("s"), rl)
 	h := s.Handler()
 
 	req := httptest.NewRequest(http.MethodGet, HealthzPath, nil)
@@ -245,7 +261,7 @@ func TestClientIP(t *testing.T) {
 			r.Header.Set("X-Forwarded-For", tt.fwd)
 		}
 		r.RemoteAddr = tt.addr
-		got := clientIP(r)
+		got := clientIP(r, false)
 		if got != tt.want {
 			t.Errorf("clientIP(fwd=%q, addr=%q) = %q; want %q", tt.fwd, tt.addr, got, tt.want)
 		}
@@ -254,7 +270,7 @@ func TestClientIP(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	r.Header.Set("X-Real-IP", "9.9.9.9")
 	r.RemoteAddr = "192.168.1.1:8080"
-	if got := clientIP(r); got != "9.9.9.9" {
+	if got := clientIP(r, false); got != "9.9.9.9" {
 		t.Errorf("X-Real-IP clientIP = %q, want 9.9.9.9", got)
 	}
 }

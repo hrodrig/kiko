@@ -102,30 +102,28 @@ Writes to PostgreSQL, passes all audits.
 
 ---
 
-### 🟠 Phase 3: Hardening & Distribution (`v0.4.0`) — 1-2 sprints
+### ✅ Phase 3: Hardening & Distribution (`v0.4.0`) — Done
 
 **Goal:** Ready for production in MicroK8s.
 
-- [ ] Multi-level rate limiting (by IP, by host) — per-IP done in Phase 1
-- [ ] Bot filtering: prefetch headers, known bots, UA validation
-- [ ] **Referrer spam blocklist** — static domain list; drop hits with known spam referrers
-- [ ] **Optional datacenter IP blocklist** — static CIDR file; configurable on/off (lightweight CE-style filter)
-- [ ] IP ignore list (configurable, exclude own IPs)
-- [ ] **Proxy-aware client IP** — first valid IP from `X-Forwarded-For`; reject private/loopback when proxy misconfigured
-- [ ] **Debug ingest headers** — `X-Kiko-Dropped: 1` on silent reject (bot/prefetch/spam); optional `X-Debug-Request: true` returns IP used for visitor hash (Traefik/Ingress troubleshooting)
-- [ ] **`kiko.js` SPA support** — auto pageviews on `history.pushState` / `popstate`; optional `hashchange` for hash-based routing; keep script ~500B–1KB
-- [ ] `configs/kiko.yml.sample` — documented config
-- [ ] `scripts/install.sh` — `curl | sh` installer
-- [ ] Production-hardened release (tag v0.4.0)
-- [ ] Homebrew cask published
-- [ ] .deb + .rpm packages via nfpm
-- [ ] Docker multi-arch published to GHCR
-- [ ] Man page complete
-- [ ] E2E test with docker-compose (kiko + PostgreSQL + curl assertions)
-- [ ] MicroK8s deployment docs:
-  - Deployment + Service + ConfigMap
-  - Ingress with Traefik + auth middleware
-- [ ] CHANGELOG v0.4.0
+- [x] Multi-level rate limiting (by IP, by host) — per-IP done in Phase 1
+- [x] Bot filtering: prefetch headers, known bots, UA validation
+- [x] **Referrer spam blocklist** — static domain list; drop hits with known spam referrers
+- [x] **Optional datacenter IP blocklist** — static CIDR file; configurable on/off (lightweight CE-style filter)
+- [x] IP ignore list (configurable, exclude own IPs)
+- [x] **Proxy-aware client IP** — first valid IP from `X-Forwarded-For`; reject private/loopback when proxy misconfigured
+- [x] **Debug ingest headers** — `X-Kiko-Dropped: 1` on silent reject (bot/prefetch/spam); optional `X-Debug-Request: true` returns IP used for visitor hash (Traefik/Ingress troubleshooting)
+- [x] **`kiko.js` SPA support** — auto pageviews on `history.pushState` / `popstate`; optional `hashchange` for hash-based routing; keep script ~500B–1KB
+- [x] `configs/kiko.yml.sample` — documented config
+- [x] `scripts/install.sh` — release installer; documented in **kiko-selfhosted**
+- [x] Production-hardened release (tag v0.4.0)
+- [x] Homebrew cask published
+- [x] .deb + .rpm packages via nfpm
+- [x] Docker multi-arch published to GHCR
+- [x] Man page complete
+- [x] E2E test with docker-compose (kiko + PostgreSQL + curl assertions) — dev CI in this repo
+- [x] MicroK8s / Compose / Helm deployment docs — **[kiko-selfhosted](https://github.com/hrodrig/kiko-selfhosted)**
+- [x] CHANGELOG v0.4.0
 
 **Success criteria:** `brew install hrodrig/kiko/kiko && kiko serve` works;
 SPA navigation fires multiple pageviews; Docker image on GHCR with grype 0 vulnerabilities.
@@ -170,7 +168,7 @@ SPA navigation fires multiple pageviews; Docker image on GHCR with grype 0 vulne
 | **Risk** | Low | Low | Medium | Medium | Low |
 | **Dependencies** | Go | PostgreSQL | P1 | P1+P2 | P1+P2+P3 |
 
-**Next:** Phase 3 — Hardening & distribution.
+**Next:** Phase 4 — Maturity (CSV export, custom events, GeoIP).
 
 ---
 

@@ -90,19 +90,19 @@ func TestIsBot(t *testing.T) {
 
 func TestPrefetch(t *testing.T) {
 	cases := []struct {
-		ua      string
-		purpose string
-		want    bool
+		ua, purpose, secPurpose string
+		want                    bool
 	}{
-		{"", "prefetch", true},
-		{"Mozilla/5.0 ...", "", false},
-		{"Mozilla/5.0 (compatible; Prefetch)", "", true},
-		{"Mozilla/5.0 ...", "other", false},
+		{"", "prefetch", "", true},
+		{"Mozilla/5.0 ...", "", "prefetch", true},
+		{"Mozilla/5.0 ...", "", "", false},
+		{"Mozilla/5.0 (compatible; Prefetch)", "", "", true},
+		{"Mozilla/5.0 ...", "other", "", false},
 	}
 	for _, c := range cases {
-		got := Prefetch(c.ua, c.purpose)
+		got := Prefetch(c.ua, c.purpose, c.secPurpose)
 		if got != c.want {
-			t.Errorf("Prefetch(%q, %q) = %v; want %v", c.ua, c.purpose, got, c.want)
+			t.Errorf("Prefetch(%q, %q, %q) = %v; want %v", c.ua, c.purpose, c.secPurpose, got, c.want)
 		}
 	}
 }

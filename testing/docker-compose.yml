@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kiko
+      POSTGRES_PASSWORD: kiko
+      POSTGRES_DB: kiko
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kiko -d kiko"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  kiko:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KIKO_LISTEN: ":8080"
+      KIKO_DATABASE_DRIVER: postgres
+      KIKO_DATABASE_HOST: postgres
+      KIKO_DATABASE_PORT: "5432"
+      KIKO_DATABASE_USER: kiko
+      KIKO_DATABASE_PASSWORD: kiko
+      KIKO_DATABASE_DBNAME: kiko
+      KIKO_VISITOR_SALT: e2e-test-salt
+      KIKO_API_KEY: e2e-secret
+    ports:
+      - "18080:8080"

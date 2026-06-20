@@ -32,7 +32,7 @@ func (rl *APIRateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := extractAPIKey(r)
 		if key == "" {
-			key = "ip:" + clientIP(r)
+			key = "ip:" + clientIP(r, false)
 		}
 		lim := rl.get(key)
 		if !lim.Allow() {

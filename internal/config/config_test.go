@@ -195,6 +195,19 @@ func TestLoadAPIKeyEnv(t *testing.T) {
 	}
 }
 
+func TestLoadFilterDefaults(t *testing.T) {
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.Filter.TrustProxy {
+		t.Error("expected trust_proxy default true")
+	}
+	if cfg.RateLimit.HostRequestsPerSec != 50 {
+		t.Errorf("host rps = %d", cfg.RateLimit.HostRequestsPerSec)
+	}
+}
+
 func TestNormalizedDriver(t *testing.T) {
 	tests := []struct {
 		in   string

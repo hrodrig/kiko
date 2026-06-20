@@ -82,8 +82,9 @@ func testStatsHandler(t *testing.T, apiKey string) (store.Store, http.Handler) {
 	}
 	buf := hit.NewBuffer(100)
 	l := log.New(nil, log.Off)
-	sv := New(st, buf, l, nil, visitor.NewHasher("test"), nil,
-		WithStats(StatsConfig{APIKey: apiKey}, NewAPIRateLimiter(100, 100)))
+	sv := New(st, buf, l, visitor.NewHasher("test"), nil,
+		WithStats(StatsConfig{APIKey: apiKey}, NewAPIRateLimiter(100, 100)),
+		WithIngest(mustFilter(t, nil), nil, false))
 	return st, sv.Handler()
 }
 

@@ -68,8 +68,8 @@ func IsBot(ua string) bool {
 }
 
 // Prefetch returns true if the request is a prefetch/prerender.
-func Prefetch(ua, purpose string) bool {
-	if purpose == "prefetch" {
+func Prefetch(ua, purpose, secPurpose string) bool {
+	if purpose == "prefetch" || secPurpose == "prefetch" {
 		return true
 	}
 	if strings.Contains(strings.ToLower(ua), "prefetch") {
