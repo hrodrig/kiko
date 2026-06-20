@@ -1,4 +1,4 @@
-.TH KIKO 1 "2026-06-19" "kiko 0.4.0" "User Commands"
+.TH KIKO 1 "2026-06-20" "kiko 0.4.1" "User Commands"
 .SH NAME
 kiko \- privacy-first web analytics collector
 .SH SYNOPSIS
@@ -30,6 +30,9 @@ Read-only JSON stats API (requires \fBapi.key\fR when set).
 .TP
 \fB/api/v1/healthz\fR, \fB/api/v1/readyz\fR
 Kubernetes liveness and readiness probes.
+.TP
+\fB/api/v1/version\fR
+Public build metadata (\fBversion\fR, \fBcommit\fR, \fBbuild_date\fR, \fBbranch\fR); same as \fBkiko version\fR.
 .SH ENVIRONMENT
 .TP
 \fBKIKO_LISTEN\fR, \fBKIKO_DATABASE_DSN\fR, \fBKIKO_VISITOR_SALT\fR, \fBKIKO_API_KEY\fR

@@ -59,6 +59,7 @@ func New(s store.Store, buf hit.Buffer, l *log.Logger, v visitor.Hasher, rl *Rat
 	sv.mux.HandleFunc("GET /hit.gif", sv.trackGIF)
 	sv.mux.HandleFunc("GET "+HealthzPath, sv.healthz)
 	sv.mux.HandleFunc("GET "+ReadyzPath, sv.readyz)
+	sv.mux.HandleFunc("GET "+VersionPath, sv.version)
 	if acc, ok := s.(store.DBAccessor); ok {
 		db, driver := acc.StatsDB()
 		registerStats(sv.mux, analyzer.New(db, driver), sv.stats, l)
