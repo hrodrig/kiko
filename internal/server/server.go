@@ -5,15 +5,14 @@ import (
 	"encoding/json"
 	"io"
 	stdlog "log"
-	"net"
 	"net/http"
 	"strings"
 
 	"github.com/hrodrig/kiko/internal/analyzer"
 	"github.com/hrodrig/kiko/internal/hit"
 	"github.com/hrodrig/kiko/internal/log"
+	"github.com/hrodrig/kiko/internal/netutil"
 	"github.com/hrodrig/kiko/internal/store"
-	"github.com/hrodrig/kiko/internal/validate"
 	"github.com/hrodrig/kiko/internal/visitor"
 )
 
@@ -30,26 +29,27 @@ var trackingJS string
 var pixelGIF []byte
 
 type Server struct {
-	store        store.Store
-	buf          hit.Buffer
-	mux          *http.ServeMux
-	log          *log.Logger
-	allowedHosts []string
-	visitor      visitor.Hasher
-	rateLimiter  *RateLimiter
-	apiLimiter   *APIRateLimiter
-	stats        StatsConfig
+	store       store.Store
+	buf         hit.Buffer
+	mux         *http.ServeMux
+	log         *log.Logger
+	visitor     visitor.Hasher
+	rateLimiter *RateLimiter
+	apiLimiter  *APIRateLimiter
+	hostLimiter *HostRateLimiter
+	filter      *HitFilter
+	trustProxy  bool
+	stats       StatsConfig
 }
 
-func New(s store.Store, buf hit.Buffer, l *log.Logger, allowedHosts []string, v visitor.Hasher, rl *RateLimiter, opts ...ServerOption) *Server {
+func New(s store.Store, buf hit.Buffer, l *log.Logger, v visitor.Hasher, rl *RateLimiter, opts ...ServerOption) *Server {
 	sv := &Server{
-		store:        s,
-		buf:          buf,
-		mux:          http.NewServeMux(),
-		log:          l,
-		allowedHosts: allowedHosts,
-		visitor:      v,
-		rateLimiter:  rl,
+		store:       s,
+		buf:         buf,
+		mux:         http.NewServeMux(),
+		log:         l,
+		visitor:     v,
+		rateLimiter: rl,
 	}
 	for _, o := range opts {
 		o(sv)
@@ -77,6 +77,15 @@ func WithStats(cfg StatsConfig, apiRL *APIRateLimiter) ServerOption {
 	}
 }
 
+// WithIngest configures hit filtering and per-host rate limits.
+func WithIngest(filter *HitFilter, hostRL *HostRateLimiter, trustProxy bool) ServerOption {
+	return func(s *Server) {
+		s.filter = filter
+		s.hostLimiter = hostRL
+		s.trustProxy = trustProxy
+	}
+}
+
 func (s *Server) Handler() http.Handler {
 	h := http.Handler(s.mux)
 	if s.rateLimiter != nil {
@@ -93,46 +102,15 @@ func (s *Server) serveJS(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, trackingJS)
 }
 
-func (s *Server) accept(h hit.Hit, r *http.Request) bool {
-	// allowlist: hostname OR IP/CIDR match (empty = accept all)
-	if validate.Allowlist(h.Host, s.allowedHosts) {
-		goto checkBot
-	}
-	if validate.Allowlist(clientIP(r), s.allowedHosts) {
-		goto checkBot
-	}
-	s.log.Debug("reject: not allowed: host=%s ip=%s", h.Host, clientIP(r))
-	return false
-
-checkBot:
-	// bot check
-	ua := r.Header.Get("User-Agent")
-	if validate.Prefetch(ua, r.Header.Get("Purpose")) {
-		s.log.Debug("reject: prefetch from %s", h.Host)
-		return false
-	}
-	if validate.IsBot(ua) {
-		s.log.Debug("reject: bot from %s (ua: %s)", h.Host, shorten(ua, 40))
-		return false
-	}
-	return true
-}
-
 func (s *Server) trackHit(w http.ResponseWriter, r *http.Request) {
 	var h hit.Hit
 	if err := json.NewDecoder(r.Body).Decode(&h); err != nil {
 		s.log.Debug("hit decode error: %v", err)
-		servePixel(w)
+		respondTrack(w, r, trackOutcome{accepted: false, reason: RejectNotAllowed})
 		return
 	}
 	h.Normalize()
-	if s.accept(h, r) {
-		h.VisitorHash = s.visitor.Hash(clientIP(r), r.Header.Get("User-Agent"))
-		enrichHit(&h, r.Header.Get("User-Agent"))
-		s.buf.Append(h)
-		s.log.Debug("hit: %s %s (ref: %s)", h.Host, h.Path, h.Referrer)
-	}
-	servePixel(w)
+	s.ingest(w, r, h)
 }
 
 func (s *Server) trackGIF(w http.ResponseWriter, r *http.Request) {
@@ -144,13 +122,34 @@ func (s *Server) trackGIF(w http.ResponseWriter, r *http.Request) {
 		Width:    queryInt(r.URL.Query().Get("w")),
 	}
 	h.Normalize()
-	if s.accept(h, r) {
-		h.VisitorHash = s.visitor.Hash(clientIP(r), r.Header.Get("User-Agent"))
-		enrichHit(&h, r.Header.Get("User-Agent"))
-		s.buf.Append(h)
-		s.log.Debug("hit: %s %s (ref: %s)", h.Host, h.Path, h.Referrer)
+	s.ingest(w, r, h)
+}
+
+func (s *Server) ingest(w http.ResponseWriter, r *http.Request, h hit.Hit) {
+	out := trackOutcome{accepted: true}
+	if s.filter != nil {
+		out.reason, out.clientIP = s.filter.Check(h, r)
+		if out.reason != RejectNone {
+			out.accepted = false
+			s.log.Debug("reject: %s host=%s ip=%s", out.reason, h.Host, out.clientIP)
+			respondTrack(w, r, out)
+			return
+		}
+	} else {
+		out.clientIP = s.clientIP(r)
 	}
-	servePixel(w)
+	if s.hostLimiter != nil && !s.hostLimiter.Allow(h.Host) {
+		out.accepted = false
+		out.reason = RejectHostRateLimit
+		s.log.Debug("reject: host rate limit %s", h.Host)
+		respondTrack(w, r, out)
+		return
+	}
+	h.VisitorHash = s.visitor.Hash(out.clientIP, r.Header.Get("User-Agent"))
+	enrichHit(&h, r.Header.Get("User-Agent"))
+	s.buf.Append(h)
+	s.log.Debug("hit: %s %s (ref: %s)", h.Host, h.Path, h.Referrer)
+	respondTrack(w, r, out)
 }
 
 func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
@@ -178,6 +177,10 @@ func (s *Server) readyz(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) clientIP(r *http.Request) string {
+	return clientIP(r, s.trustProxy)
+}
+
 func servePixel(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "image/gif")
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
@@ -186,24 +189,8 @@ func servePixel(w http.ResponseWriter) {
 	w.Write(pixelGIF)
 }
 
-// clientIP extracts the client IP from X-Forwarded-For, X-Real-IP, or RemoteAddr.
-func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		ip := strings.TrimSpace(strings.Split(xff, ",")[0])
-		if ip != "" {
-			return ip
-		}
-	}
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return strings.TrimSpace(xri)
-	}
-	if rip := r.RemoteAddr; rip != "" {
-		if h, _, err := net.SplitHostPort(rip); err == nil {
-			return h
-		}
-		return rip
-	}
-	return ""
+func clientIP(r *http.Request, trustProxy bool) string {
+	return netutil.ClientIP(r, trustProxy)
 }
 
 func shorten(s string, n int) string {

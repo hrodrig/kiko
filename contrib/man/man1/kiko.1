@@ -1,4 +1,4 @@
-.TH KIKO 1 "2026-06-19" "kiko 0.1.0" "User Commands"
+.TH KIKO 1 "2026-06-19" "kiko 0.4.0" "User Commands"
 .SH NAME
 kiko \- privacy-first web analytics collector
 .SH SYNOPSIS
@@ -7,12 +7,38 @@ kiko \- privacy-first web analytics collector
 .SH DESCRIPTION
 Minimal, privacy-first web analytics collector. No cookies. One static binary.
 .SH COMMANDS
+.TP
 .B serve
-Start the analytics HTTP server.
+Start the analytics HTTP server (tracking + stats API).
+.TP
+.B version
+Print version, commit, and build metadata.
 .SH FLAGS
-\fB-c, --config\fR=file
-Path to config file (default: ./kiko.yml)
+.TP
+\fB-c, --config\fR=\fIfile\fR
+Path to config file (default search: ./kiko.yml, /etc/kiko/kiko.yml).
+.SH ENDPOINTS
+.TP
+\fB/kiko.js\fR
+Tracking script (~1KB, SPA-aware). Append \fB?hash=1\fR for hash-based routing.
+.TP
+\fB/hit\fR, \fB/hit.gif\fR
+Ingest endpoints. Rejected hits return the same GIF with header \fBX-Kiko-Dropped: 1\fR.
+.TP
+\fB/api/v1/stats/*\fR
+Read-only JSON stats API (requires \fBapi.key\fR when set).
+.TP
+\fB/api/v1/healthz\fR, \fB/api/v1/readyz\fR
+Kubernetes liveness and readiness probes.
 .SH ENVIRONMENT
-\fBKIKO_LISTEN\fR, \fBKIKO_DATABASE_DSN\fR
+.TP
+\fBKIKO_LISTEN\fR, \fBKIKO_DATABASE_DSN\fR, \fBKIKO_VISITOR_SALT\fR, \fBKIKO_API_KEY\fR
+.TP
+\fBKIKO_FILTER_TRUST_PROXY\fR, \fBKIKO_FILTER_BLOCK_DATACENTER_IPS\fR
+.SH FILES
+.TP
+.I /etc/kiko/kiko.yml
+Default configuration path.
 .SH SEE ALSO
 https://github.com/hrodrig/kiko
+https://github.com/hrodrig/kiko-selfhosted

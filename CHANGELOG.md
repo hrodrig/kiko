@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-19
+
+### Added
+
+- **Phase 3 hardening:** referrer spam blocklist, optional datacenter IP blocklist, IP ignore list.
+- **Proxy-aware client IP** (`filter.trust_proxy`) via `internal/netutil/` — first public IP from `X-Forwarded-For`.
+- **Debug ingest:** `X-Kiko-Dropped: 1` on silent rejects; `X-Debug-Request: true` returns JSON with client IP.
+- **Per-host rate limiting** (`rate_limit.host_requests_per_sec`).
+- **`kiko.js` SPA support** — auto pageviews on `pushState` / `popstate`; `?hash=1` enables hash routing.
+- **`scripts/install.sh`** — release installer (used from [kiko-selfhosted](https://github.com/hrodrig/kiko-selfhosted) docs).
+- **E2E:** `testing/docker-compose.yml` + `make e2e` (developer CI only).
+- Man page updated for v0.4.0 endpoints and config.
+
 ## [0.3.0] - 2026-06-19
 
 ### Added

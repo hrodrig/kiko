@@ -121,8 +121,24 @@ func initRuntime(cfg *config.Config) (store.Store, hit.Buffer, http.Handler, fun
 		rl = server.NewRateLimiter(server.RateLimitConfig{
 			RequestsPerSec: cfg.RateLimit.RequestsPerSec,
 			Burst:          cfg.RateLimit.Burst,
+			TrustProxy:     cfg.Filter.TrustProxy,
 		})
 	}
+
+	filter, err := server.NewHitFilter(server.FilterConfig{
+		AllowedHosts:       cfg.AllowedHosts,
+		IgnoreIPs:          cfg.Filter.IgnoreIPs,
+		TrustProxy:         cfg.Filter.TrustProxy,
+		BlockDatacenterIPs: cfg.Filter.BlockDatacenterIPs,
+		DatacenterExtra:    cfg.Filter.DatacenterCIDRs,
+	})
+	if err != nil {
+		cancel()
+		st.Close()
+		return nil, nil, nil, nil, err
+	}
+
+	hostRL := server.NewHostRateLimiter(cfg.RateLimit.HostRequestsPerSec, cfg.RateLimit.HostBurst)
 
 	var apiRL *server.APIRateLimiter
 	if cfg.API.RateLimit.Enabled {
@@ -134,8 +150,9 @@ func initRuntime(cfg *config.Config) (store.Store, hit.Buffer, http.Handler, fun
 
 	opts := []server.ServerOption{
 		server.WithStats(server.StatsConfig{APIKey: cfg.API.Key}, apiRL),
+		server.WithIngest(filter, hostRL, cfg.Filter.TrustProxy),
 	}
-	sv := server.New(st, buf, cfg.Log, cfg.AllowedHosts, vh, rl, opts...)
+	sv := server.New(st, buf, cfg.Log, vh, rl, opts...)
 	cleanup := func() {
 		cancel()
 		flushHits(st, buf, cfg.Log)

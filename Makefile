@@ -154,6 +154,11 @@ dist-openbsd: ## Cross-compile OpenBSD tarball
 	GOOS=openbsd GOARCH=$(OPENBSD_ARCH) go build -trimpath -ldflags "$(LDFLAGS)" -o /tmp/kiko_openbsd_$(OPENBSD_ARCH) ./cmd/kiko
 	tar czf $(DIST)/kiko_$(VERSION)_openbsd_$(OPENBSD_ARCH).tar.gz -C /tmp kiko_openbsd_$(OPENBSD_ARCH)
 
+.PHONY: e2e
+
+e2e: ## Docker Compose E2E (kiko + PostgreSQL + curl)
+	sh testing/e2e.sh
+
 run: ## Build and run locally
 	go run -ldflags "$(LDFLAGS)" ./cmd/kiko serve
 

@@ -16,6 +16,7 @@ type Config struct {
 	Database     DatabaseCfg  `mapstructure:"database"`
 	Buffer       BufferCfg    `mapstructure:"buffer"`
 	RateLimit    RateLimitCfg `mapstructure:"rate_limit"`
+	Filter       FilterCfg    `mapstructure:"filter"`
 	API          APICfg       `mapstructure:"api"`
 	AllowedHosts []string     `mapstructure:"allowed_hosts"`
 	Visitor      VisitorCfg   `mapstructure:"visitor"`
@@ -77,9 +78,18 @@ type BufferCfg struct {
 }
 
 type RateLimitCfg struct {
-	Enabled        bool `mapstructure:"enabled"`
-	RequestsPerSec int  `mapstructure:"requests_per_sec"`
-	Burst          int  `mapstructure:"burst"`
+	Enabled            bool `mapstructure:"enabled"`
+	RequestsPerSec     int  `mapstructure:"requests_per_sec"`
+	Burst              int  `mapstructure:"burst"`
+	HostRequestsPerSec int  `mapstructure:"host_requests_per_sec"`
+	HostBurst          int  `mapstructure:"host_burst"`
+}
+
+type FilterCfg struct {
+	TrustProxy         bool     `mapstructure:"trust_proxy"`
+	BlockDatacenterIPs bool     `mapstructure:"block_datacenter_ips"`
+	DatacenterCIDRs    []string `mapstructure:"datacenter_cidrs"`
+	IgnoreIPs          []string `mapstructure:"ignore_ips"`
 }
 
 type APICfg struct {
@@ -119,6 +129,8 @@ func Load(path string) (*Config, error) {
 	v.BindEnv("rate_limit.enabled", "KIKO_RATE_LIMIT_ENABLED")
 	v.BindEnv("api.key", "KIKO_API_KEY")
 	v.BindEnv("api.rate_limit.enabled", "KIKO_API_RATE_LIMIT_ENABLED")
+	v.BindEnv("filter.trust_proxy", "KIKO_FILTER_TRUST_PROXY")
+	v.BindEnv("filter.block_datacenter_ips", "KIKO_FILTER_BLOCK_DATACENTER_IPS")
 
 	v.SetDefault("listen", ":8080")
 	v.SetDefault("public_url", "http://localhost:8080")
@@ -136,6 +148,10 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("rate_limit.enabled", true)
 	v.SetDefault("rate_limit.requests_per_sec", 100)
 	v.SetDefault("rate_limit.burst", 200)
+	v.SetDefault("rate_limit.host_requests_per_sec", 50)
+	v.SetDefault("rate_limit.host_burst", 100)
+	v.SetDefault("filter.trust_proxy", true)
+	v.SetDefault("filter.block_datacenter_ips", false)
 	v.SetDefault("api.rate_limit.enabled", true)
 	v.SetDefault("api.rate_limit.requests_per_sec", 30)
 	v.SetDefault("api.rate_limit.burst", 60)

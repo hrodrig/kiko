@@ -40,11 +40,25 @@ buffer:
   # Max hits buffered in memory before drop (flushed periodically)
   capacity: 4096
 
-# Rate limiting (per-IP token bucket)
+# Rate limiting (per-IP token bucket + optional per-host ingest cap)
 rate_limit:
   enabled: true
   requests_per_sec: 100
   burst: 200
+  host_requests_per_sec: 50
+  host_burst: 100
+
+# Ingest filtering (Phase 3)
+filter:
+  # Trust X-Forwarded-For / X-Real-IP from Traefik/Ingress
+  trust_proxy: true
+  # Drop hits from known cloud/hosting CIDR ranges (lightweight CE-style list)
+  block_datacenter_ips: false
+  # Extra CIDR strings appended to the built-in datacenter list
+  datacenter_cidrs: []
+  # Exclude operator IPs from stats (hostname, IP, or CIDR)
+  ignore_ips:
+    - 203.0.113.10
 
 # Only accept hits from these hosts (empty = accept all)
 # Supports: hostnames, IPs, CIDR ranges

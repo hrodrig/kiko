@@ -6,7 +6,7 @@
   <em>High-performance, cookie-free, batteries-included server-side analytics.</em>
 </p>
 
-[![Version](https://img.shields.io/badge/version-0.3.0-blue)](https://github.com/hrodrig/kiko/releases)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue)](https://github.com/hrodrig/kiko/releases)
 [![Release](https://img.shields.io/github/v/release/hrodrig/kiko)](https://github.com/hrodrig/kiko/releases)
 [![CI](https://github.com/hrodrig/kiko/actions/workflows/ci.yml/badge.svg)](https://github.com/hrodrig/kiko/actions)
 [![Security](https://github.com/hrodrig/kiko/actions/workflows/security.yml/badge.svg)](https://github.com/hrodrig/kiko/actions/workflows/security.yml)
@@ -44,7 +44,7 @@ Privacy-first web analytics **collector** in Go. A ~500-byte tracking script sen
 - [Design principles](#design-principles)
 - [How it works](#how-it-works)
 - [Configuration](#configuration)
-- [Install](#install)
+- [Build & releases](#build--releases)
 - [Tracking snippet](#tracking-snippet)
 - [API](#api)
   - [Hit payload](#hit-payload)
@@ -77,7 +77,7 @@ Custom config:
 kiko serve -c /etc/kiko/kiko.yml
 ```
 
-Probes for Kubernetes: `GET /api/v1/healthz` (liveness), `GET /api/v1/readyz` (readiness — DB + buffer).
+Probes for Kubernetes: `GET /api/v1/healthz` (liveness), `GET /api/v1/readyz` (readiness — DB + buffer). **Deployment paths** (Compose, Helm, MicroK8s): **[kiko-selfhosted](https://github.com/hrodrig/kiko-selfhosted)**.
 
 [↑ Back to top](#top)
 
@@ -168,6 +168,17 @@ rate_limit:
   enabled: true
   requests_per_sec: 100
   burst: 200
+  host_requests_per_sec: 50   # optional per-host ingest cap
+  host_burst: 100
+
+filter:
+  trust_proxy: false          # use first public IP from X-Forwarded-For / X-Real-IP
+  block_bots: true
+  block_prefetch: true
+  block_referrer_spam: true
+  block_datacenter_ips: false
+  ignore_ips: []              # never count these client IPs
+  extra_datacenter_cidrs: []
 
 allowed_hosts: []         # empty = accept all
 
@@ -194,6 +205,13 @@ visitor:
 | `KIKO_RATE_LIMIT_ENABLED` | `rate_limit.enabled` |
 | `KIKO_RATE_LIMIT_REQUESTS_PER_SEC` | `rate_limit.requests_per_sec` |
 | `KIKO_RATE_LIMIT_BURST` | `rate_limit.burst` |
+| `KIKO_RATE_LIMIT_HOST_REQUESTS_PER_SEC` | `rate_limit.host_requests_per_sec` |
+| `KIKO_RATE_LIMIT_HOST_BURST` | `rate_limit.host_burst` |
+| `KIKO_FILTER_TRUST_PROXY` | `filter.trust_proxy` |
+| `KIKO_FILTER_BLOCK_BOTS` | `filter.block_bots` |
+| `KIKO_FILTER_BLOCK_PREFETCH` | `filter.block_prefetch` |
+| `KIKO_FILTER_BLOCK_REFERRER_SPAM` | `filter.block_referrer_spam` |
+| `KIKO_FILTER_BLOCK_DATACENTER_IPS` | `filter.block_datacenter_ips` |
 | `KIKO_ALLOWED_HOSTS` | `allowed_hosts` (comma-separated) |
 | `KIKO_VISITOR_SALT` | `visitor.salt` |
 
@@ -213,21 +231,18 @@ visitor:
 
 ---
 
-## Install
+## Build & releases
+
+**Development** (this repo):
 
 ```bash
-# From source (recommended during early development)
-git clone https://github.com/hrodrig/kiko
-cd kiko
 make build
-sudo cp kiko /usr/local/bin/
-
-# Homebrew (coming soon)
-# brew install hrodrig/kiko/kiko
-
-# Docker (when published)
-docker pull ghcr.io/hrodrig/kiko:latest
+sudo cp kiko /usr/local/bin/   # optional
 ```
+
+**Production deployment** (Compose, Helm, Kubernetes, env layout): **[kiko-selfhosted](https://github.com/hrodrig/kiko-selfhosted)** — not this repo.
+
+**Published artifacts:** [GitHub Releases](https://github.com/hrodrig/kiko/releases) and **`ghcr.io/hrodrig/kiko`** (multi-arch). Formats below are built by CI/Goreleaser from this repo; runbooks live in **kiko-selfhosted**.
 
 | OS | Arch | Format |
 |----|------|--------|
@@ -244,6 +259,8 @@ docker pull ghcr.io/hrodrig/kiko:latest
 ## Tracking snippet
 
 The server embeds `kiko.js` (~500B). It sends `POST /hit` via `navigator.sendBeacon()` and falls back to a 1×1 GIF pixel (`GET /hit.gif`) when needed. Always responds with a transparent GIF — success and rejection look the same to the browser.
+
+**SPAs:** pageviews fire on `history.pushState` / `popstate` (History API). For hash-based routers, load with `?hash=1` to also track `hashchange`.
 
 [↑ Back to top](#top)
 
@@ -337,6 +354,15 @@ curl -sS -X POST 'http://127.0.0.1:8080/hit' \
 ```
 
 Expect `200 image/gif` (43-byte transparent GIF). Invalid or rejected hits return the **same** GIF so browsers cannot distinguish success from drop.
+
+**Response headers (ingest debugging):**
+
+| Header | When | Meaning |
+|--------|------|---------|
+| `X-Kiko-Dropped: 1` | rejected hit | Silent drop (bot, prefetch, spam referrer, datacenter IP, rate limit, …) |
+| `X-Debug-Request: true` (request) | optional | Response body is JSON with `client_ip`, `accepted`, and `reason` instead of GIF |
+
+Use debug mode behind a reverse proxy to verify client IP forwarding without polluting stats — see **[kiko-selfhosted](https://github.com/hrodrig/kiko-selfhosted)** for Traefik/Ingress examples.
 
 #### `GET /hit.gif`
 

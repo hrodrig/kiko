@@ -10,11 +10,12 @@ import (
 
 // RateLimiter is a per-IP token-bucket rate limiter.
 type RateLimiter struct {
-	limiters sync.Map // string → *rateLimiterEntry
-	rate     rate.Limit
-	burst    int
-	maxIdle  time.Duration
-	done     chan struct{}
+	limiters   sync.Map // string → *rateLimiterEntry
+	rate       rate.Limit
+	burst      int
+	maxIdle    time.Duration
+	done       chan struct{}
+	trustProxy bool
 }
 
 type rateLimiterEntry struct {
@@ -26,6 +27,7 @@ type rateLimiterEntry struct {
 type RateLimitConfig struct {
 	RequestsPerSec int
 	Burst          int
+	TrustProxy     bool
 }
 
 // NewRateLimiter creates a per-IP token bucket rate limiter. Call Shutdown on cleanup.
@@ -39,10 +41,11 @@ func NewRateLimiter(cfg RateLimitConfig) *RateLimiter {
 		burst = 1
 	}
 	rl := &RateLimiter{
-		rate:    r,
-		burst:   burst,
-		maxIdle: 5 * time.Minute,
-		done:    make(chan struct{}),
+		rate:       r,
+		burst:      burst,
+		maxIdle:    5 * time.Minute,
+		done:       make(chan struct{}),
+		trustProxy: cfg.TrustProxy,
 	}
 	go rl.cleanupLoop()
 	return rl
@@ -64,7 +67,7 @@ func (rl *RateLimiter) Middleware(next http.Handler, skip MiddlewareSkip) http.H
 			next.ServeHTTP(w, r)
 			return
 		}
-		ip := clientIP(r)
+		ip := clientIP(r, rl.trustProxy)
 		entry := rl.getOrCreate(ip)
 		if !entry.limiter.Allow() {
 			w.Header().Set("Retry-After", "60")
