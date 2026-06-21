@@ -1,4 +1,8 @@
 (function(){
+  var s=document.currentScript;
+  var u=s?s.src.split('/'):[];
+  u.pop();
+  var base=u.join('/');
   var payload=function(){
     return {
       host: location.hostname,
@@ -12,9 +16,9 @@
     var d=payload();
     var b=new Blob([JSON.stringify(d)],{type:'application/json'});
     try{
-      if(!navigator.sendBeacon('/hit',b)) throw 0;
+      if(!navigator.sendBeacon(base+'/hit',b)) throw 0;
     }catch(e){
-      (new Image()).src='/hit.gif?p='+encodeURIComponent(d.path)+
+      (new Image()).src=base+'/hit.gif?p='+encodeURIComponent(d.path)+
         '&r='+encodeURIComponent(d.referrer)+
         '&t='+encodeURIComponent(d.title)+
         '&w='+d.width+
@@ -25,6 +29,5 @@
   var push=history.pushState;
   history.pushState=function(){push.apply(history,arguments);send();};
   addEventListener('popstate',send);
-  var s=document.currentScript;
   if(s&&/[\?&]hash=1(?:&|$)/.test(s.src)) addEventListener('hashchange',send);
 })();
