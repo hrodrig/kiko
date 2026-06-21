@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-06-21
+
+### Fixed
+
+- **kiko.js** — sendBeacon and hit.gif now use absolute URL derived from script source.
+  Works when kiko.js loaded from different origin than page (cross-domain tracking).
+
 ## [0.4.1] - 2026-06-20
 
 ### Added

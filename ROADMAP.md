@@ -138,6 +138,8 @@ SPA navigation fires multiple pageviews; Docker image on GHCR with grype 0 vulne
 - [ ] Data retention policy (auto-purge old hits, keep aggregated stats)
 - [ ] **Custom events** — extend `POST /hit` (or `POST /event`) with `name` + optional `props` (JSON, capped); aggregate by event name for **kui**
 - [ ] **Auto-capture (optional, `kiko.js` flags)** — outbound link clicks, file downloads, form submissions (Plausible-style, off by default)
+- [ ] **Site keys (`kiko.js?key=site_abc123`)** — API key per hostname; server validates that the key matches the reported `host` field. Prevents spoofed hostnames from rogue clients. Managed via kiko config or API.
+- [ ] **CORS on `/hit`** — restrict `Access-Control-Allow-Origin` to configured origins; prevents third-party sites from sending hits to a kiko instance they don't own.
 - [ ] Geography: optional GeoIP via MaxMind GeoLite2 (country-level)
 - [ ] Channel classification: add **ai** referrer bucket (ChatGPT, Perplexity, …) — direct/organic/social/email/referral done in Phase 1
 - [ ] Prometheus metrics endpoint (`/metrics`) for kiko self-monitoring
