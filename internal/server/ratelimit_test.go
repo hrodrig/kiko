@@ -15,7 +15,7 @@ func TestRateLimiterBlocksAfterBurst(t *testing.T) {
 	}), MiddlewareSkip{})
 
 	for i := 0; i < 2; i++ {
-		req := httptest.NewRequest(http.MethodPost, "/hit", nil)
+		req := httptest.NewRequest(http.MethodPost, "/api", nil)
 		req.RemoteAddr = "10.0.0.2:12345"
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, req)
@@ -24,7 +24,7 @@ func TestRateLimiterBlocksAfterBurst(t *testing.T) {
 		}
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/hit", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api", nil)
 	req.RemoteAddr = "10.0.0.2:12345"
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -41,19 +41,19 @@ func TestRateLimiterSkipsHealthAndScript(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}), PublicMiddlewareSkip())
 
-	req := httptest.NewRequest(http.MethodGet, "/hit", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api", nil)
 	req.RemoteAddr = "10.0.0.1:12345"
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
-		t.Fatal("expected first /hit to pass")
+		t.Fatal("expected first /api to pass")
 	}
-	req = httptest.NewRequest(http.MethodGet, "/hit", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api", nil)
 	req.RemoteAddr = "10.0.0.1:12345"
 	rec = httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected /hit rate limited, got %d", rec.Code)
+		t.Fatalf("expected /api rate limited, got %d", rec.Code)
 	}
 
 	for _, path := range []string{HealthzPath, ReadyzPath, "/kiko.js"} {

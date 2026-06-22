@@ -63,7 +63,7 @@ func TestDebugRequestJSON(t *testing.T) {
 	s := testServer(nil)
 	body := `{"host":"test.dev","path":"/"}`
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("POST", "/hit", strings.NewReader(body))
+	r := httptest.NewRequest("POST", "/api", strings.NewReader(body))
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("User-Agent", "Mozilla/5.0 Chrome/120")
 	r.Header.Set(headerDebugReq, "true")

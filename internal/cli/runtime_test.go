@@ -29,7 +29,7 @@ func TestInitRuntimeSQLite(t *testing.T) {
 	defer ts.Close()
 
 	body := `{"host":"test.dev","path":"/ok"}`
-	req, err := http.NewRequest(http.MethodPost, ts.URL+"/hit", strings.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/api", strings.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestInitRuntimeSQLite(t *testing.T) {
 	req.Header.Set("User-Agent", "Mozilla/5.0 Chrome/120")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Fatalf("POST /hit = %v", err)
+		t.Fatalf("POST /api = %v", err)
 	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {

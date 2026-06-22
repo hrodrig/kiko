@@ -1,5 +1,5 @@
-DISTNAME=	kiko-0.4.3
-PKGNAME=	kiko-0.4.3
+DISTNAME=	kiko-0.4.4
+PKGNAME=	kiko-0.4.4
 
 CATEGORIES=	sysutils
 

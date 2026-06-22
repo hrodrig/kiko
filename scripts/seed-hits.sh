@@ -8,8 +8,8 @@
 set -euo pipefail
 
 BASE="${1:-http://localhost:8080}"
-HIT_URL="${BASE}/hit"
-GIF_URL="${BASE}/hit.gif"
+HIT_URL="${BASE}/api"
+GIF_URL="${BASE}/api.gif"
 
 red=$(printf '\033[31m')
 grn=$(printf '\033[32m')
@@ -25,9 +25,9 @@ need() { command -v "$1" >/dev/null 2>&1 || die "missing: $1"; }
 need curl
 
 # ------------------------------------------------------------------
-# POST /hit — JSON body
+# POST /api — JSON body
 # ------------------------------------------------------------------
-info "POST /hit — JSON"
+info "POST /api — JSON"
 
 send_json() {
   local host="$1" path="$2" referrer="$3" title="$4" width="$5"
@@ -67,9 +67,9 @@ send_json "myshop.example"    "/checkout"       "https://myshop.example/cart" "C
 send_json "myshop.example"    "/"               "https://google.com/search?q=myshop" "Home — MyShop" 1440
 
 # ------------------------------------------------------------------
-# GET /hit.gif — pixel fallback
+# GET /api.gif — pixel fallback
 # ------------------------------------------------------------------
-info "GET /hit.gif — pixel"
+info "GET /api.gif — pixel"
 
 send_gif() {
   local host="$1" path="$2" referrer="$3" title="$4" width="$5"

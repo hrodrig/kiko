@@ -1,4 +1,4 @@
-.TH KIKO 1 "2026-06-21" "kiko 0.4.3" "User Commands"
+.TH KIKO 1 "2026-06-22" "kiko 0.4.4" "User Commands"
 .SH NAME
 kiko \- privacy-first web analytics collector
 .SH SYNOPSIS
@@ -22,8 +22,8 @@ Path to config file (default search: ./kiko.yml, ~/.kiko/kiko.yml, /etc/kiko/kik
 \fB/kiko.js\fR
 Tracking script (~1KB, SPA-aware). Append \fB?hash=1\fR for hash-based routing.
 .TP
-\fB/hit\fR, \fB/hit.gif\fR
-Ingest endpoints. Rejected hits return the same GIF with header \fBX-Kiko-Dropped: 1\fR.
+\fB/api\fR, \fB/api.gif\fR
+Ingest endpoints (POST /api for JSON, GET /api.gif for pixel fallback).
 .TP
 \fB/api/v1/stats/*\fR
 Read-only JSON stats API (requires \fBapi.key\fR when set).
