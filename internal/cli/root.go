@@ -75,9 +75,12 @@ func serveCmd(cfgFile string) error {
 		Handler: handler,
 	}
 
-	cfg.Log.Info("kiko v%s starting on %s (db=%s, flush=%ds, cap=%d)",
+	cfg.Log.Info("kiko v%s starting on %s (db=%s, flush=%ds, cap=%d, log=%s)",
 		version.Version, cfg.Listen, cfg.Database.NormalizedDriver(),
-		cfg.Buffer.FlushInterval, cfg.Buffer.Capacity)
+		cfg.Buffer.FlushInterval, cfg.Buffer.Capacity, cfg.Log.LevelName())
+	if cfg.Database.NormalizedDriver() == "sqlite" {
+		cfg.Log.Info("database path: %s", cfg.Database.Path)
+	}
 	cfg.Log.Info("public_url: %s", cfg.PublicURL)
 
 	errCh := make(chan error, 1)

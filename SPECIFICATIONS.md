@@ -109,6 +109,46 @@ Rate limiting (per-IP token bucket, `golang.org/x/time/rate`) protects tracking 
 
 ---
 
+## 2. Configuration
+
+kiko loads configuration from YAML, environment variables (`KIKO_*`), and CLI flags, in that priority order (highest wins).
+
+### 2.1 Config file search path
+
+When the `--config` / `-c` flag is **not** provided, kiko searches for `kiko.yml` in the following locations, in order:
+
+| Location | Startup message |
+|----------|-----------------|
+| `./kiko.yml` (current directory) | `Using config file: $PWD/kiko.yml` |
+| `~/.kiko/kiko.yml` (user home) | `Using config file: $HOME/.kiko/kiko.yml` |
+| `/etc/kiko/kiko.yml` (system) | `Using config file: /etc/kiko/kiko.yml` |
+
+If **no** file is found, kiko starts with defaults and logs:
+
+```
+Using config file: none, default settings
+```
+
+All values can still be overridden via `KIKO_*` environment variables even without a YAML file.
+
+### 2.2 Schema reference
+
+See [`configs/kiko.yml.sample`](configs/kiko.yml.sample) for all available keys, types, defaults, and env var mappings.
+
+### 2.3 Privacy guarantees
+
+Privacy guarantees are enforced at the config / data-flow level:
+
+- **Cookie-free** — no session cookies, no persistent identifiers in storage
+- **Daily salt** — hash changes every day, visitor is "new" the next day
+- **IP in memory only** — never persisted to disk, only used for the hash
+- **No personal data** — no email, name, or persistent identifier stored
+- **GDPR-ready** — no cookie banner needed, no PII stored
+
+The same guarantees apply regardless of database backend.
+
+---
+
 ## 3. Database Schema
 
 Default backend is **SQLite** (`./data/kiko.db`). PostgreSQL and MySQL use the same logical schema with driver-specific types.
@@ -344,7 +384,7 @@ Public build metadata for **kui** and operators. Same fields as `kiko version`. 
 |-------|-----------|--------|
 | Language | **Go 1.26+** | Static binary, ecosystem alignment |
 | CLI | **Cobra** | Standard, same pattern as gghstats/kzero/groot |
-| Config | **Viper** | YAML + env vars, same pattern |
+| Config | **Viper** | YAML + env vars, search: `./kiko.yml` → `~/.kiko/kiko.yml` → `/etc/kiko/kiko.yml` |
 | DB | **SQLite** (default), **PostgreSQL**, **MySQL** | via `modernc.org/sqlite`, `pgx`, `go-sql-driver/mysql` |
 | Buffer | **Memory + mutex** | In-process slice, configurable capacity |
 | Rate limit | **golang.org/x/time/rate** | Per-IP token bucket (pattern from gghstats) |
