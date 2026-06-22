@@ -66,7 +66,7 @@ flowchart LR
 
     subgraph kiko["kiko (Go binary)"]
         direction TB
-        IN["POST /hit · GET /hit.gif"]
+        IN["POST /api · GET /api.gif"]
         RL["rate limit (per IP)"]
         HASH["visitor_hash<br/>SHA-256(ip + ua + daily salt)"]
         BUF["MemBuffer<br/>(mutex, cap 4k)"]
@@ -92,7 +92,7 @@ flowchart LR
 ### 2.2 Hit flow
 
 1. Browser loads `kiko.js` → detects `path`, `referrer`, `title`, `screen.width`
-2. Sends `POST /hit` with JSON body via `navigator.sendBeacon()`, fallback to `GET /hit.gif?p=...`
+2. Sends `POST /api` with JSON body via `navigator.sendBeacon()`, fallback to `GET /api.gif?p=...`
 3. **kiko** receives, calculates `visitor_hash = SHA-256(ip + ua + daily_salt)`, appends to memory buffer
 4. Every 10s, batch flush: insert raw hits, normalize paths/referrers, upsert hourly stats
 5. Always responds with 43-byte transparent GIF (success or error — indistinguishable)
@@ -230,7 +230,7 @@ Pattern inspired by [gghstats](https://github.com/hrodrig/gghstats) `ON CONFLICT
 
 ## 4. API
 
-### `POST /hit`
+### `POST /api`
 
 Main tracking endpoint.
 
@@ -268,7 +268,7 @@ Client IP is taken from `X-Forwarded-For` (first hop), then `X-Real-IP`, then `R
 **Example request**
 
 ```bash
-curl -sS -X POST 'http://127.0.0.1:8080/hit' \
+curl -sS -X POST 'http://127.0.0.1:8080/api' \
   -H 'Content-Type: application/json' \
   -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X) Chrome/120.0.0.0 Safari/537.36' \
   -d '{"host":"gghstats.com","path":"/blog/my-post","referrer":"https://dev.to/someone","title":"My Post","width":1920}'
@@ -309,7 +309,7 @@ Read-only JSON API for **kui** and automation. Implemented in `internal/analyzer
 
 Responses include `Cache-Control: public, max-age=60`.
 
-### `GET /hit.gif`
+### `GET /api.gif`
 
 Fallback for browsers without `sendBeacon`.
 
@@ -326,12 +326,12 @@ Fallback for browsers without `sendBeacon`.
 **Example**
 
 ```http
-GET /hit.gif?h=gghstats.com&p=%2Fblog%2Fmy-post&r=https%3A%2F%2Fdev.to%2Fsomeone&t=My%20Post%20%7C%20GGHStats&w=1920 HTTP/1.1
+GET /api.gif?h=gghstats.com&p=%2Fblog%2Fmy-post&r=https%3A%2F%2Fdev.to%2Fsomeone&t=My%20Post%20%7C%20GGHStats&w=1920 HTTP/1.1
 Host: analytics.example.com
 User-Agent: Mozilla/5.0 ...
 ```
 
-**Response:** same 43-byte GIF as `POST /hit`.
+**Response:** same 43-byte GIF as `POST /api`.
 
 ### `GET /kiko.js`
 Serves the tracking script (immutable, cached 24h).
@@ -365,9 +365,9 @@ Public build metadata for **kui** and operators. Same fields as `kiko version`. 
   };
   var b = new Blob([JSON.stringify(d)], {type:'application/json'});
   try {
-    if (!navigator.sendBeacon('/hit', b)) throw 0;
+    if (!navigator.sendBeacon('/api', b)) throw 0;
   } catch(e) {
-    (new Image()).src = '/hit.gif?p=' + encodeURIComponent(d.path) +
+    (new Image()).src = '/api.gif?p=' + encodeURIComponent(d.path) +
       '&r=' + encodeURIComponent(d.referrer) +
       '&t=' + encodeURIComponent(d.title) +
       '&w=' + d.width +

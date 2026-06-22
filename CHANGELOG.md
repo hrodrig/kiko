@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-06-22
+
+### Changed
+
+- **Ingest endpoints** — `POST /hit` → `POST /api`, `GET /hit.gif` → `GET /api.gif`
+  to avoid ad-blocker detection. Updated `kiko.js`, `seed-hits.sh`, docs, and tests.
+
 ## [0.4.3] - 2026-06-21
 
 ### Added
@@ -14,7 +21,7 @@
 - **Database path logged** — shows `database path: ./data/kiko.db` on startup
   (SQLite only).
 - **`scripts/seed-hits.sh`** — send sample tracking hits to a local kiko server
-  (POST /hit and GET /hit.gif).
+  (POST /api and GET /api.gif).
 
 ### Changed
 
@@ -24,7 +31,7 @@
 
 ### Fixed
 
-- **kiko.js** — sendBeacon and hit.gif now use absolute URL derived from script source.
+- **kiko.js** — sendBeacon and api.gif now use absolute URL derived from script source.
   Works when kiko.js loaded from different origin than page (cross-domain tracking).
 
 ## [0.4.1] - 2026-06-20

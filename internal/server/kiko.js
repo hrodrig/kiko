@@ -16,9 +16,9 @@
     var d=payload();
     var b=new Blob([JSON.stringify(d)],{type:'application/json'});
     try{
-      if(!navigator.sendBeacon(base+'/hit',b)) throw 0;
+      if(!navigator.sendBeacon(base+'/api',b)) throw 0;
     }catch(e){
-      (new Image()).src=base+'/hit.gif?p='+encodeURIComponent(d.path)+
+      (new Image()).src=base+'/api.gif?p='+encodeURIComponent(d.path)+
         '&r='+encodeURIComponent(d.referrer)+
         '&t='+encodeURIComponent(d.title)+
         '&w='+d.width+

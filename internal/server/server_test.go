@@ -78,7 +78,7 @@ func TestTrackHit_SetsVisitorHash(t *testing.T) {
 
 	body := `{"host":"test.dev","path":"/blog"}`
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("POST", "/hit", strings.NewReader(body))
+	r := httptest.NewRequest("POST", "/api", strings.NewReader(body))
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("User-Agent", "Mozilla/5.0 Chrome/120")
 	r.RemoteAddr = "192.168.1.1:8080"
@@ -98,7 +98,7 @@ func TestTrackHit(t *testing.T) {
 	s := testServer(nil)
 	body := `{"host":"test.dev","path":"/blog","referrer":"https://google.com"}`
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("POST", "/hit", strings.NewReader(body))
+	r := httptest.NewRequest("POST", "/api", strings.NewReader(body))
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("User-Agent", "Mozilla/5.0 Chrome/120")
 	s.mux.ServeHTTP(w, r)
@@ -118,7 +118,7 @@ func TestTrackHit_RejectBot(t *testing.T) {
 	s := testServer(nil)
 	body := `{"host":"test.dev","path":"/"}`
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("POST", "/hit", strings.NewReader(body))
+	r := httptest.NewRequest("POST", "/api", strings.NewReader(body))
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("User-Agent", "Googlebot/2.1")
 	s.mux.ServeHTTP(w, r)
@@ -139,7 +139,7 @@ func TestTrackHit_RejectHost(t *testing.T) {
 	s := testServer([]string{"gghstats.com"})
 	body := `{"host":"evil.com","path":"/"}`
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("POST", "/hit", strings.NewReader(body))
+	r := httptest.NewRequest("POST", "/api", strings.NewReader(body))
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("User-Agent", "Mozilla/5.0 Chrome/120")
 	s.mux.ServeHTTP(w, r)
@@ -152,7 +152,7 @@ func TestTrackHit_AllowedHost(t *testing.T) {
 	s := testServer([]string{"gghstats.com"})
 	body := `{"host":"gghstats.com","path":"/"}`
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("POST", "/hit", strings.NewReader(body))
+	r := httptest.NewRequest("POST", "/api", strings.NewReader(body))
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("User-Agent", "Mozilla/5.0 Chrome/120")
 	s.mux.ServeHTTP(w, r)
@@ -165,7 +165,7 @@ func TestTrackHit_RejectPrefetch(t *testing.T) {
 	s := testServer(nil)
 	body := `{"host":"test.dev","path":"/"}`
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("POST", "/hit", strings.NewReader(body))
+	r := httptest.NewRequest("POST", "/api", strings.NewReader(body))
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("User-Agent", "Mozilla/5.0 Chrome/120")
 	r.Header.Set("Purpose", "prefetch")
@@ -178,7 +178,7 @@ func TestTrackHit_RejectPrefetch(t *testing.T) {
 func TestTrackGIF(t *testing.T) {
 	s := testServer(nil)
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", "/hit.gif?p=/test&h=test.dev&r=https://google.com", nil)
+	r := httptest.NewRequest("GET", "/api.gif?p=/test&h=test.dev&r=https://google.com", nil)
 	r.Header.Set("User-Agent", "Mozilla/5.0 Chrome/120")
 	s.mux.ServeHTTP(w, r)
 	if w.Code != http.StatusOK {

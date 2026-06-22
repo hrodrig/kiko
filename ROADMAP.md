@@ -42,7 +42,7 @@ Writes to PostgreSQL, passes all audits.
 
 **Bonus (started Phase 1 items):**
 - [x] `internal/hit/` with Hit type + Buffer (channel-based)
-- [x] `internal/server/` with HTTP handlers (kiko.js, hit, hit.gif, health)
+- [x] `internal/server/` with HTTP handlers (kiko.js, api, api.gif, health)
 - [x] `internal/log/` with leveled logger (Trace → Off)
 - [x] `internal/validate/` with host allowlist, bot detection, prefetch filtering
 - [x] `internal/store/` with Store interface + NopStore
@@ -71,7 +71,7 @@ Writes to PostgreSQL, passes all audits.
 - [x] `internal/ref/` — referrer parser + basic channel classifier
 - [x] Tests: integration with PostgreSQL/MySQL (skip unless `KIKO_TEST_*` env set)
 
-**Success criteria:** `make run` starts kiko, `curl -X POST localhost:8080/hit` returns GIF and hit appears in DB with hourly aggregates.
+**Success criteria:** `make run` starts kiko, `curl -X POST localhost:8080/api` returns GIF and hit appears in DB with hourly aggregates.
 
 ---
 
@@ -136,10 +136,10 @@ SPA navigation fires multiple pageviews; Docker image on GHCR with grype 0 vulne
 
 - [ ] CSV export (raw hits by date range)
 - [ ] Data retention policy (auto-purge old hits, keep aggregated stats)
-- [ ] **Custom events** — extend `POST /hit` (or `POST /event`) with `name` + optional `props` (JSON, capped); aggregate by event name for **kui**
+- [ ] **Custom events** — extend `POST /api` (or `POST /event`) with `name` + optional `props` (JSON, capped); aggregate by event name for **kui**
 - [ ] **Auto-capture (optional, `kiko.js` flags)** — outbound link clicks, file downloads, form submissions (Plausible-style, off by default)
 - [ ] **Site keys (`kiko.js?key=site_abc123`)** — API key per hostname; server validates that the key matches the reported `host` field. Prevents spoofed hostnames from rogue clients. Managed via kiko config or API.
-- [ ] **CORS on `/hit`** — restrict `Access-Control-Allow-Origin` to configured origins; prevents third-party sites from sending hits to a kiko instance they don't own.
+- [ ] **CORS on `/api`** — restrict `Access-Control-Allow-Origin` to configured origins; prevents third-party sites from sending hits to a kiko instance they don't own.
 - [ ] Geography: optional GeoIP via MaxMind GeoLite2 (country-level)
 - [ ] Channel classification: add **ai** referrer bucket (ChatGPT, Perplexity, …) — direct/organic/social/email/referral done in Phase 1
 - [ ] Prometheus metrics endpoint (`/metrics`) for kiko self-monitoring

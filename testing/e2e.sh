@@ -13,7 +13,7 @@ UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0"
 curl -fsS "$BASE/api/v1/healthz" | grep -q '"status":"ok"'
 curl -fsS "$BASE/api/v1/readyz" | grep -q '"status":"ok"'
 
-curl -fsS -X POST "$BASE/hit" \
+  curl -fsS -X POST "$BASE/api" \
   -H "Content-Type: application/json" \
   -H "User-Agent: $UA" \
   -d '{"host":"e2e.test","path":"/hello","referrer":"https://example.com"}' \

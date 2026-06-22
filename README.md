@@ -6,7 +6,7 @@
   <em>High-performance, cookie-free, batteries-included server-side analytics.</em>
 </p>
 
-[![Version](https://img.shields.io/badge/version-0.4.3-blue)](https://github.com/hrodrig/kiko/releases)
+[![Version](https://img.shields.io/badge/version-0.4.4-blue)](https://github.com/hrodrig/kiko/releases)
 [![Release](https://img.shields.io/github/v/release/hrodrig/kiko)](https://github.com/hrodrig/kiko/releases)
 [![CI](https://github.com/hrodrig/kiko/actions/workflows/ci.yml/badge.svg)](https://github.com/hrodrig/kiko/actions)
 [![Security](https://github.com/hrodrig/kiko/actions/workflows/security.yml/badge.svg)](https://github.com/hrodrig/kiko/actions/workflows/security.yml)
@@ -126,7 +126,7 @@ flowchart LR
 
     subgraph kiko["kiko (Go binary)"]
         direction TB
-        IN["POST /hit · GET /hit.gif"]
+        IN["POST /api · GET /api.gif"]
         RL["rate limit (per IP)"]
         HASH["visitor_hash<br/>SHA-256(ip + ua + daily salt)"]
         BUF["MemBuffer<br/>(mutex, cap 4k)"]
@@ -258,7 +258,7 @@ sudo cp kiko /usr/local/bin/   # optional
 
 ## Tracking snippet
 
-The server embeds `kiko.js` (~500B). It sends `POST /hit` via `navigator.sendBeacon()` and falls back to a 1×1 GIF pixel (`GET /hit.gif`) when needed. Always responds with a transparent GIF — success and rejection look the same to the browser.
+The server embeds `kiko.js` (~500B). It sends `POST /api` via `navigator.sendBeacon()` and falls back to a 1×1 GIF pixel (`GET /api.gif`) when needed. Always responds with a transparent GIF — success and rejection look the same to the browser.
 
 **SPAs:** pageviews fire on `history.pushState` / `popstate` (History API). For hash-based routers, load with `?hash=1` to also track `hashchange`.
 
@@ -271,8 +271,8 @@ The server embeds `kiko.js` (~500B). It sends `POST /hit` via `navigator.sendBea
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/kiko.js` | GET | Tracking script (cached 24h) |
-| `/hit` | POST | JSON tracking endpoint |
-| `/hit.gif` | GET | Pixel fallback |
+| `/api` | POST | JSON tracking endpoint |
+| `/api.gif` | GET | Pixel fallback |
 | `/api/v1/healthz` | GET | Liveness probe |
 | `/api/v1/readyz` | GET | Readiness probe (DB + buffer) |
 | `/api/v1/version` | GET | Build metadata — same fields as `kiko version` (public, no auth) |
@@ -313,7 +313,7 @@ Responses are JSON with `Cache-Control: public, max-age=60`.
 
 The browser sends **only** the fields below. kiko enriches each hit server-side (visitor hash, browser/OS, traffic channel) before buffering — those are **not** part of the client JSON.
 
-#### `POST /hit`
+#### `POST /api`
 
 **Headers**
 
@@ -347,7 +347,7 @@ The browser sends **only** the fields below. kiko enriches each hit server-side 
 **Try it**
 
 ```bash
-curl -sS -X POST 'http://127.0.0.1:8080/hit' \
+curl -sS -X POST 'http://127.0.0.1:8080/api' \
   -H 'Content-Type: application/json' \
   -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0.0.0' \
   -d '{"host":"localhost","path":"/demo","referrer":"https://google.com/search?q=kiko","title":"Demo","width":1920}' \
@@ -365,7 +365,7 @@ Expect `200 image/gif` (43-byte transparent GIF). Invalid or rejected hits retur
 
 Use debug mode behind a reverse proxy to verify client IP forwarding without polluting stats — see **[kiko-selfhosted](https://github.com/hrodrig/kiko-selfhosted)** for Traefik/Ingress examples.
 
-#### `GET /hit.gif`
+#### `GET /api.gif`
 
 Pixel fallback when `sendBeacon` is unavailable. Query params map to the same JSON fields:
 
@@ -380,10 +380,10 @@ Pixel fallback when `sendBeacon` is unavailable. Query params map to the same JS
 **Example**
 
 ```http
-GET /hit.gif?h=gghstats.com&p=%2Fblog%2Fmy-post&r=https%3A%2F%2Fdev.to%2Fsomeone&t=My%20Post&w=1920
+GET /api.gif?h=gghstats.com&p=%2Fblog%2Fmy-post&r=https%3A%2F%2Fdev.to%2Fsomeone&t=My%20Post&w=1920
 ```
 
-Same `User-Agent` and client IP rules as `POST /hit`.
+Same `User-Agent` and client IP rules as `POST /api`.
 
 #### Server-side enrichment (not in client payload)
 

@@ -55,8 +55,8 @@ func New(s store.Store, buf hit.Buffer, l *log.Logger, v visitor.Hasher, rl *Rat
 		o(sv)
 	}
 	sv.mux.HandleFunc("GET /kiko.js", sv.serveJS)
-	sv.mux.HandleFunc("POST /hit", sv.trackHit)
-	sv.mux.HandleFunc("GET /hit.gif", sv.trackGIF)
+	sv.mux.HandleFunc("POST /api", sv.trackHit)
+	sv.mux.HandleFunc("GET /api.gif", sv.trackGIF)
 	sv.mux.HandleFunc("GET "+HealthzPath, sv.healthz)
 	sv.mux.HandleFunc("GET "+ReadyzPath, sv.readyz)
 	sv.mux.HandleFunc("GET "+VersionPath, sv.version)
