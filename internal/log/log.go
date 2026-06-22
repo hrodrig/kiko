@@ -66,8 +66,9 @@ func ParseLevel(s string) (Level, error) {
 
 // Logger is a leveled logger.
 type Logger struct {
-	level  Level
-	logger *log.Logger
+	level   Level
+	logger  *log.Logger
+	appName string
 }
 
 // New creates a Logger that writes to w.
@@ -77,8 +78,18 @@ func New(w io.Writer, level Level) *Logger {
 		w = os.Stderr
 	}
 	return &Logger{
-		level:  level,
-		logger: log.New(w, "", 0),
+		level:   level,
+		logger:  log.New(w, "", 0),
+		appName: "kiko",
+	}
+}
+
+// WithAppName returns a copy of the Logger with a different app name.
+func (l *Logger) WithAppName(name string) *Logger {
+	return &Logger{
+		level:   l.level,
+		logger:  l.logger,
+		appName: name,
 	}
 }
 
@@ -88,13 +99,18 @@ func (l *Logger) SetLevel(level Level) { l.level = level }
 // Level returns the current minimum level.
 func (l *Logger) Level() Level { return l.level }
 
+// LevelName returns the string representation of the current level (lowercase).
+func (l *Logger) LevelName() string {
+	return levelNames[l.level]
+}
+
 func (l *Logger) log(level Level, format string, args ...any) {
 	if level < l.level {
 		return
 	}
 	msg := fmt.Sprintf(format, args...)
 	ts := time.Now().UTC().Format(time.RFC3339)
-	l.logger.Printf("%s  %-5s  %s", ts, levelNames[level], msg)
+	l.logger.Printf("%s  - %s - %-5s  %s", ts, l.appName, levelNames[level], msg)
 
 	if level == Fatal {
 		os.Exit(1)

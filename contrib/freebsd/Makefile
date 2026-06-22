@@ -1,4 +1,4 @@
-PORTVERSION=	0.1.0
+PORTVERSION=	0.4.3
 CATEGORIES=	sysutils
 
 MAINTAINER=	Hermes J. Rodríguez Azuaje <hejeroaz@gmail.com>

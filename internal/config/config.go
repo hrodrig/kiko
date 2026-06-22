@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/hrodrig/kiko/internal/log"
@@ -112,6 +114,9 @@ func Load(path string) (*Config, error) {
 	v := viper.New()
 	v.SetConfigName("kiko")
 	v.AddConfigPath(".")
+	if home, err := os.UserHomeDir(); err == nil {
+		v.AddConfigPath(filepath.Join(home, ".kiko"))
+	}
 	v.AddConfigPath("/etc/kiko/")
 	v.SetEnvPrefix("KIKO")
 	v.AutomaticEnv()
@@ -160,10 +165,13 @@ func Load(path string) (*Config, error) {
 		v.SetConfigFile(path)
 	}
 
+	used := "<none>"
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, err
 		}
+	} else {
+		used = v.ConfigFileUsed()
 	}
 
 	var cfg Config
@@ -180,6 +188,9 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("config: %w", err)
 	}
 	cfg.Log = log.New(nil, lvl)
+
+	cfg.Log.Info("Using config file: %s", used)
+	cfg.Log.Info("Debug level set to: %s", cfg.Log.LevelName())
 
 	return &cfg, nil
 }

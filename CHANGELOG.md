@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-06-21
+
+### Added
+
+- **Log format** — each line now includes `- kiko -` before level for multi-service log
+  federation (`2026-06-22T01:40:25Z  - kiko - INFO  ...`).
+- **Config search path** — `./kiko.yml` → `~/.kiko/kiko.yml` → `/etc/kiko/kiko.yml`;
+  startup logs `Using config file: <path>` or `Using config file: none, default settings`.
+- **Log level banner** — `Debug level set to: DEBUG` on startup.
+- **Database path logged** — shows `database path: ./data/kiko.db` on startup
+  (SQLite only).
+- **`scripts/seed-hits.sh`** — send sample tracking hits to a local kiko server
+  (POST /hit and GET /hit.gif).
+
+### Changed
+
+- Config search path extended to include `~/.kiko/kiko.yml`.
+
 ## [0.4.2] - 2026-06-21
 
 ### Fixed
