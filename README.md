@@ -262,6 +262,26 @@ The server embeds `kiko.js` (~500B). It sends `POST /api` via `navigator.sendBea
 
 **SPAs:** pageviews fire on `history.pushState` / `popstate` (History API). For hash-based routers, load with `?hash=1` to also track `hashchange`.
 
+The full tracking script source is open for audit at [internal/server/kiko.js](https://github.com/hrodrig/kiko/blob/main/internal/server/kiko.js).
+
+### First-party proxy (production)
+
+Never point the tracking script directly at your kiko domain — ad blockers and CSP policies will block it. Serve `kiko.js` and the API endpoints from **your own domain** via a reverse proxy (nginx, Traefik, Caddy, Cloudflare, etc.).
+
+Set `data-endpoint` (or let kiko.js auto-detect) to match your proxy path:
+
+```html
+<script defer
+        src="https://your-domain.com/kiko/kiko.js"
+        data-endpoint="https://your-domain.com/kiko"
+        id="kiko-tracker">
+</script>
+```
+
+The proxy must forward `/kiko/kiko.js`, `/kiko/api`, and `/kiko/api.gif` to the kiko backend, preserving the client IP via `X-Forwarded-For`.
+
+**Full walkthrough with examples (nginx, Traefik, multi-environment):** **[kiko-selfhosted → Behind a reverse proxy](https://github.com/hrodrig/kiko-selfhosted#behind-a-reverse-proxy)**.
+
 [↑ Back to top](#top)
 
 ---
