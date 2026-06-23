@@ -6,7 +6,7 @@
   <em>High-performance, cookie-free, batteries-included server-side analytics.</em>
 </p>
 
-[![Version](https://img.shields.io/badge/version-0.4.4-blue)](https://github.com/hrodrig/kiko/releases)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue)](https://github.com/hrodrig/kiko/releases)
 [![Release](https://img.shields.io/github/v/release/hrodrig/kiko)](https://github.com/hrodrig/kiko/releases)
 [![CI](https://github.com/hrodrig/kiko/actions/workflows/ci.yml/badge.svg)](https://github.com/hrodrig/kiko/actions)
 [![Security](https://github.com/hrodrig/kiko/actions/workflows/security.yml/badge.svg)](https://github.com/hrodrig/kiko/actions/workflows/security.yml)

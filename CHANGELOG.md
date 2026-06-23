@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-23
+
+### Added
+
+- **kiko.js `data-endpoint` attribute** — set a custom endpoint URL via
+  `script[data-endpoint]` for first-party tracking and CSP compliance.
+- **`window.kiko.track` API** — expose manual `send()` function for modern
+  SPAs to trigger pageviews programmatically.
+- **`height` field** — capture `screen.height` alongside existing `screen.width`.
+- **`language` field** — capture `navigator.language` on each hit.
+- **`URLSearchParams` GIF fallback** — replace hand-rolled `encodeURIComponent`
+  with `URLSearchParams` for proper encoding of GIF query parameters.
+
+### Changed
+
+- **kiko.js** — reformatted with `'use strict'` and expanded variable names
+  for readability.
+
 ## [0.4.4] - 2026-06-22
 
 ### Changed
